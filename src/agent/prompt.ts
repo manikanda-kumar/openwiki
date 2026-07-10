@@ -154,6 +154,7 @@ Required documentation structure:
 - Include source-file references inline where they help readers verify or continue exploring.
 - Source Map sections are optional. Add one only when it materially improves navigation for that page. Prefer inline source references for short pages.
 - Track the last successful documentation update in ${output.metadataPath}.
+- ${output.bestPracticesInstruction}
 
 Mode-specific behavior:
 ${createModeInstructions(command, outputMode)}
@@ -184,9 +185,9 @@ export function createModeInstructions(
 - ${output.initialInventoryInstruction}
 - ${output.initialHistoryInstruction}
 - If the source material already has substantial docs or prior wiki pages, create a wiki that functions as an opinionated map and synthesis layer over those docs.
-- Create ${output.quickstartPath} first, then the linked section pages.
+- Create ${output.quickstartPath} first, then ${outputMode === "repository" ? "/openwiki/best-practices.md and " : ""}the linked section pages.
 - Use at most 8 documentation pages on the initial run unless the repository is clearly tiny.
-- Do not try to document every source file. Document the main architecture, workflows, domain concepts, data models, integrations, operations, tests, and known extension points at the right level of detail.
+- Do not try to document every source file. Document the main architecture, workflows, domain concepts, data models, integrations, operations, tests, and known extension points at the right level of detail${outputMode === "repository" ? ", plus language/framework/util best practices in /openwiki/best-practices.md" : ""}.
 - The CLI will record successful run metadata in ${output.metadataPath} after you finish.
 `.trim();
   }
@@ -256,6 +257,7 @@ ${context.gitSummary}
 }
 
 type OutputPromptConfig = {
+  bestPracticesInstruction: string;
   docsLocation: string;
   filesystemRootInstruction: string;
   gitDisciplineInstruction: string;
@@ -280,6 +282,8 @@ function getOutputPromptConfig(
 ): OutputPromptConfig {
   if (outputMode === "local-wiki") {
     return {
+      bestPracticesInstruction:
+        "Local personal wiki mode does not require a best-practices page. Skip language/framework/util inventories unless the user explicitly asks for engineering-stack documentation.",
       docsLocation: "~/.openwiki/wiki (the current virtual filesystem root /)",
       filesystemRootInstruction:
         "Filesystem tools are rooted at ~/.openwiki/wiki. Use virtual paths such as /quickstart.md, /sources/gmail.md, /topics/ai-research.md, and /_plan.md. Do not create a nested /openwiki directory.",
@@ -367,15 +371,56 @@ function getOutputPromptConfig(
   }
 
   return {
+    bestPracticesInstruction: `Code mode must maintain /openwiki/best-practices.md as a carved-out engineering map for humans, agents, and optional external rule tooling (for example org AI-rules packages).
+
+Purpose (tooling glue):
+- This page is the repo's **used-in-this-codebase** inventory, not a language textbook.
+- Capture what is actually adopted here (deps, internal packages, layout, lint/test gates, domain patterns present in code).
+- Do **not** restate generally public knowledge (common language idioms, ubiquitous style guides, things any competent developer or model already knows) unless the repo encodes a specific choice with evidence (path, config, or repeated pattern).
+- Distinction for every practice claim: **Used** (evidence in this repo) vs **Public knowledge** (omit, or one-line "standard; not restated").
+- When a claim is only weakly evidenced, omit it. Prefer fewer high-signal rows over a long generic list.
+- External tools may read this page to choose rule packs, draft local AGENTS overlays, or avoid inventing stack facts. Keep tables stable and scannable for that use.
+
+Create or refresh /openwiki/best-practices.md on init. On update, revise it only when stack, conventions, shared utils, or framework usage changed. Link it from /openwiki/quickstart.md under documentation map / start-here links.
+
+Used-vs-public discipline:
+- INCLUDE: direct dependencies and major transitive tools that shape code; internal shared modules; house conventions with file paths; service archetype signals (gRPC handlers, Kafka consumers, REST BFFs, CLI main, workers); quality-gate commands; domain patterns actually implemented (outbox package, idempotency keys, saga package, redaction helpers).
+- EXCLUDE: "use meaningful names", "write tests", "prefer composition", generic error-handling essays, public Go/TS/Python tutorials, and org-wide anti-slop bans that are not demonstrated or configured in this repo (those belong in a shared rules package, not this page).
+- Every framework, util, and practice row should carry evidence (path, package, config key, or test). No evidence ⇒ do not list.
+- If both a public idiom and a local wrapper exist, document the local wrapper and path, not the idiom.
+
+Language-aware discovery (detect from manifests + tree; only document what is present):
+- Go: go.mod / go.sum, go.work, cmd/, internal/, api/ or *.proto, .golangci.yml, Makefile targets, module path. Signal packs from require/replace and code: grpc, connectrpc, chi/echo/gin/fiber, kafka (segmentio/confluent/sarama), NATS, redis, otel, slog, sqlc/ent/gorm, testcontainers, errgroup. Prefer internal/ and pkg/ maps over stdlib essays.
+- TypeScript/Node: package.json, tsconfig, src layout, test runner, lint/format.
+- Python: pyproject.toml / requirements, package layout, pytest/ruff/mypy.
+- Multi-language: one inventory section per substantial language; do not invent a second language.
+
+Stable outline (omit a section only when truly N/A):
+  1. Title: Best practices
+  2. Short intro stating used-vs-public contract for this repo (1–3 sentences).
+  3. Inventory tags — machine-friendly bullets for external tooling:
+     - language: <go|typescript|python|...>; runtime/version when known
+     - archetype: <grpc|rest|cli|worker|gateway|library|mixed> (evidence-based)
+     - libs: comma-separated stack tags observed (e.g. kafka, otel, redis) — only if present
+     - module / package root when applicable (go module path, npm name)
+  4. Language & runtime — table: Item | Value | Evidence (manifests/configs only).
+  5. Used practices — conventions **observed in this repo**. Phrase as actionable local rules with paths. Do not pad with public knowledge.
+  6. Frameworks & libraries (used) — table: Name | Role | Where used | Evidence / Notes. Production deps and shaping tools only.
+  7. Shared utilities (internal) — table: Utility / module | Path | Purpose | When to reuse. Prefer first-party code over third-party re-docs.
+  8. Tooling & quality gates — build/lint/format/typecheck/test commands that this repo actually runs.
+  9. Watch-outs — repo-specific footguns only (not generic language hazards).
+  10. Optional one-liner: "Public knowledge not restated" when useful, listing categories deliberately skipped.
+
+Keep the page dense. Prefer tables. Link to architecture/domain pages instead of duplicating narratives. On init, count best-practices.md toward the focused page budget; prefer it over thin one-off section stubs.`,
     docsLocation: "the target repository's openwiki/ directory",
     filesystemRootInstruction:
-      "Filesystem tools are rooted at the target repository. Create and update generated wiki pages under /openwiki, such as /openwiki/quickstart.md, /openwiki/architecture/overview.md, or /openwiki/source-map.md.",
+      "Filesystem tools are rooted at the target repository. Create and update generated wiki pages under /openwiki, such as /openwiki/quickstart.md, /openwiki/best-practices.md, /openwiki/architecture/overview.md, or /openwiki/source-map.md.",
     gitDisciplineInstruction:
       "During repository-source updates, inspect relevant commits and git history for the configured local repository only when it helps explain source changes.",
     initialHistoryInstruction:
       "Use git evidence during init to understand how important files and workflows came to be. Prefer recent commits and targeted git blame/show on high-signal files.",
     initialInventoryInstruction:
-      "First build a repository inventory: existing docs, graph/app entrypoints, package/config files, major domain folders, tests/evals, data/schema files, skill/playbook files, and operational scripts.",
+      "First build a repository inventory: existing docs, graph/app entrypoints, package/config files, major domain folders, tests/evals, data/schema files, skill/playbook files, shared utils, frameworks/dependencies, and operational scripts.",
     localWikiSynthesisInstruction: "",
     metadataPath: "/openwiki/.last-update.json",
     planPath: "/openwiki/_plan.md",
@@ -388,14 +433,14 @@ function getOutputPromptConfig(
     searchBoundaryInstruction:
       "Do not run broad commands that search outside the target repository.",
     sectionDirectoryInstruction:
-      "When the repository is large enough to need section directories, create one directory per major section, for example architecture/, workflows/, domain/, api/, data-models/, operations/, integrations/, testing/, or similar names that fit the repo.",
+      "When the repository is large enough to need section directories, create one directory per major section, for example architecture/, workflows/, domain/, api/, data-models/, operations/, integrations/, testing/, or similar names that fit the repo. Keep /openwiki/best-practices.md as a top-level page, not buried in a section directory.",
     subjectLabel: "this repository",
     updateEvidenceInstruction:
       "Always use git-oriented repository evidence to understand recent changes. Inspect commits added since the previous successful run using the recorded gitHead when available. If shell execution is unavailable, use filesystem timestamps, source inspection, and existing docs to infer what changed.",
     writeBoundaryInstruction:
       "Do not modify source code. Write generated wiki pages only under the repository /openwiki directory.",
     writePathExample:
-      "virtual paths under /openwiki, for example /openwiki/quickstart.md or /openwiki/architecture/overview.md.",
+      "virtual paths under /openwiki, for example /openwiki/quickstart.md, /openwiki/best-practices.md, or /openwiki/architecture/overview.md.",
   };
 }
 

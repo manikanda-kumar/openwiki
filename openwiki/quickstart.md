@@ -14,6 +14,7 @@ OpenWiki is a TypeScript CLI that writes and maintains documentation for a repos
 
 ## Start here
 
+- [Best practices](./best-practices.md) — language practices, frameworks, shared utils, and quality gates.
 - [Architecture overview](./architecture/overview.md) — runtime structure, major modules, and execution flow.
 - [CLI usage](./cli/usage.md) — commands, options, model/provider selection, and credential bootstrap.
 - [Agent workflow](./agent/workflow.md) — how documentation runs are assembled and persisted.
@@ -37,6 +38,7 @@ OpenWiki is a TypeScript CLI that writes and maintains documentation for a repos
 
 ## Documentation map
 
+- [Best practices](./best-practices.md)
 - [Architecture](./architecture/overview.md)
 - [CLI](./cli/usage.md)
 - [Agent](./agent/workflow.md)
@@ -46,8 +48,10 @@ OpenWiki is a TypeScript CLI that writes and maintains documentation for a repos
 
 - The repository is intentionally focused: the main product surface is the CLI plus the documentation-generation agent.
 - Treat `openwiki/` in this repo as generated documentation output from a future OpenWiki run, not as application source.
+- For stack conventions, frameworks, and shared utils, start at [best-practices.md](./best-practices.md).
 - When changing behavior, verify both the CLI parser and the agent prompt/runtime, because user-visible semantics are split across `src/commands.ts`, `src/cli.tsx`, and `src/agent/*`.
 - Provider support is centralized in `src/constants.ts`. Adding or changing a provider means updating `PROVIDER_CONFIGS`, the `OpenWikiProvider` type, and the model-creation branch in `src/agent/index.ts`.
+- Code-mode prompt rules that require `openwiki/best-practices.md` live in `src/agent/prompt.ts` (`bestPracticesInstruction`).
 
 ## Source map
 

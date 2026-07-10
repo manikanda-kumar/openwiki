@@ -41,6 +41,7 @@ Provider retry attempts are resolved through `resolveProviderRetryAttempts()` an
 - keep the initial wiki focused and navigable,
 - avoid thin/slim pages — merge stubs into broader pages rather than creating many small directories,
 - document the repository for both humans and future agents,
+- in **code/repository mode**, maintain `/openwiki/best-practices.md` as a **used-in-repo** inventory (frameworks, internal utils, archetype/libs tags) — not public-knowledge tutorials — so agents and external rule tooling can read stack facts with evidence (see `bestPracticesInstruction`),
 - respect the repository root as the only project in scope,
 - avoid reading secrets or `.env` files,
 - use git history for init and update runs,
