@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="nord">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>OpenWiki — docs, staleness, agentic help</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/daisyui.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/daisyui@5.5.19/themes.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4.2.4/dist/index.global.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      :root {
+        --ow-ink: #1c2430;
+        --ow-cyan: #3aa0c8;
+        --ow-paper: #f4f1ea;
+      }
+      html,
+      body {
+        background: var(--ow-paper);
+        color: var(--ow-ink);
+        font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+      }
+      [data-theme="night"] {
+        --ow-ink: #e8eef4;
+        --ow-cyan: #7ec8e3;
+        --ow-paper: #0f1720;
+      }
+      body {
+        min-height: 100vh;
+      }
+      .type-display {
+        font-family: Fraunces, Georgia, serif;
+        font-optical-sizing: auto;
+        letter-spacing: -0.03em;
+      }
+      .type-mono {
+        font-family: "IBM Plex Mono", ui-monospace, monospace;
+      }
+      :where(.grid, .flex) > * {
+        min-width: 0;
+      }
+      :where(p, h1, h2, h3, h4, h5, h6, li, dd, blockquote, figcaption, td, th, .badge, .label) {
+        overflow-wrap: anywhere;
+      }
+      :where(img, svg, video, canvas, iframe) {
+        max-width: 100%;
+        height: auto;
+      }
+      .figure-frame {
+        background: color-mix(in oklab, var(--color-base-100) 88%, var(--ow-cyan) 12%);
+        border: 1px solid color-mix(in oklab, var(--ow-ink) 12%, transparent);
+      }
+      .rule {
+        height: 1px;
+        background: color-mix(in oklab, var(--ow-ink) 14%, transparent);
+      }
+    </style>
+  </head>
+  <body class="min-h-screen">
+    <header class="border-b border-base-content/10">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+        <div class="min-w-0">
+          <p class="type-mono text-xs tracking-[0.18em] text-base-content/60 uppercase">OpenWiki field guide</p>
+          <p class="type-mono text-sm text-base-content/80">docs · staleness · agents</p>
+        </div>
+        <label class="flex cursor-pointer items-center gap-2 text-sm">
+          <span class="type-mono text-xs">Light</span>
+          <input type="checkbox" class="toggle toggle-sm" aria-label="Toggle dark theme" onchange="document.documentElement.dataset.theme = this.checked ? 'night' : 'nord'" />
+          <span class="type-mono text-xs">Dark</span>
+        </label>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:py-12">
+      <section class="grid gap-8 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] lg:items-end">
+        <div>
+          <p class="type-mono mb-3 text-xs tracking-[0.22em] text-cyan-700 uppercase">How this product actually works</p>
+          <h1 class="type-display text-4xl leading-[1.05] sm:text-5xl lg:text-6xl">
+            Documentation that ages on purpose — and tells the next agent where to start.
+          </h1>
+          <p class="mt-5 max-w-2xl text-lg leading-relaxed text-base-content/80">
+            OpenWiki is not a chat wrapper around a docs folder. It is a two-mode writer that generates a wiki, refuses to rewrite it unless source evidence moved, and plants a stable pointer so coding agents land in that wiki instead of the raw tree.
+          </p>
+        </div>
+        <figure class="figure-frame overflow-hidden rounded-box">
+          <img src="openwiki-tui.png" alt="OpenWiki terminal UI: ASCII banner, provider, model, and chat prompt" class="block w-full" />
+          <figcaption class="border-t border-base-content/10 px-4 py-2 type-mono text-xs text-base-content/60">
+            Product surface is a TUI. Wiki is files. Agents consume Markdown, not this screen.
+          </figcaption>
+        </figure>
+      </section>
+
+      <section class="mt-10 grid gap-3 sm:grid-cols-3">
+        <article id="pillar-docs" class="card card-border bg-base-100">
+          <div class="card-body gap-2">
+            <p class="type-mono text-xs tracking-widest uppercase text-base-content/50">01 · Documentation</p>
+            <h2 class="card-title type-display text-2xl">Write a map, not a dump</h2>
+            <p class="text-sm leading-relaxed text-base-content/75">
+              Code mode writes <span class="type-mono">openwiki/</span> in the repo. Personal mode writes <span class="type-mono">~/.openwiki/wiki</span>. Both start at <span class="type-mono">quickstart.md</span>.
+            </p>
+          </div>
+        </article>
+        <article id="pillar-stale" class="card card-border bg-base-100">
+          <div class="card-body gap-2">
+            <p class="type-mono text-xs tracking-widest uppercase text-base-content/50">02 · Staleness</p>
+            <h2 class="card-title type-display text-2xl">Three gates, then stop</h2>
+            <p class="text-sm leading-relaxed text-base-content/75">
+              Skip the model if git did not move. If it runs, edit surgically. If the wiki hash is unchanged, do not bump <span class="type-mono">.last-update.json</span>.
+            </p>
+          </div>
+        </article>
+        <article id="pillar-agent" class="card card-border bg-base-100">
+          <div class="card-body gap-2">
+            <p class="type-mono text-xs tracking-widest uppercase text-base-content/50">03 · Agentic help</p>
+            <h2 class="card-title type-display text-2xl">Host plants the pointer</h2>
+            <p class="text-sm leading-relaxed text-base-content/75">
+              <span class="type-mono">AGENTS.md</span> / <span class="type-mono">CLAUDE.md</span> get an OpenWiki block. The wiki agent is docs-only and is told not to touch those files.
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <section id="modes" class="mt-14">
+        <p class="type-mono text-xs tracking-[0.22em] uppercase text-base-content/50">One binary, two wikis</p>
+        <h2 class="type-display mt-1 text-3xl sm:text-4xl">Which wiki is “the wiki”?</h2>
+        <p class="mt-3 max-w-3xl text-base-content/80">
+          The same agent runtime branches on <span class="type-mono">outputMode</span>. Mixing them is the most common confusion: a repo’s <span class="type-mono">openwiki/</span> is generated code docs; the canonical personal brain is always under home.
+        </p>
+
+        <figure class="figure-frame mt-6 rounded-box p-4 sm:p-6">
+          <figcaption class="mb-3 type-mono text-xs uppercase tracking-widest text-base-content/60">
+            Q: where does a run write, and what evidence does it trust?
+          </figcaption>
+          <svg
+            id="fig-modes"
+            viewBox="0 0 960 340"
+            width="100%"
+            role="img"
+            aria-labelledby="fig-modes-title"
+          >
+            <title id="fig-modes-title">Code mode vs personal mode: evidence in, wiki out</title>
+            <style>
+              .ow-label { font: 500 13px "IBM Plex Sans", sans-serif; fill: currentColor; }
+              .ow-kicker { font: 500 11px "IBM Plex Mono", monospace; fill: currentColor; opacity: 0.6; }
+              .ow-small { font: 400 12px "IBM Plex Sans", sans-serif; fill: currentColor; }
+              .ow-line { fill: none; stroke: currentColor; stroke-width: 1.4; opacity: 0.45; }
+              .ow-box { fill: color-mix(in oklab, currentColor 6%, transparent); stroke: currentColor; stroke-width: 1.2; }
+              .ow-accent { stroke: #3aa0c8; fill: none; stroke-width: 1.8; }
+            </style>
+            <text class="ow-kicker" x="24" y="28">CODE MODE · openwiki code --init|--update</text>
+            <rect id="mode-code-src" class="ow-box" x="24" y="44" width="200" height="88" rx="10">
+              <title>Repository source tree</title>
+            </rect>
+            <text class="ow-label" x="40" y="78">Repo source</text>
+            <text class="ow-small" x="40" y="98">git log / diff / HEAD</text>
+            <text class="ow-small" x="40" y="116">README, manifests</text>
+
+            <path class="ow-line" d="M224 88 H 292" marker-end="url(#arrow)" />
+            <rect id="mode-code-agent" class="ow-box" x="292" y="44" width="200" height="88" rx="10">
+              <title>Docs-only DeepAgent</title>
+            </rect>
+            <text class="ow-label" x="308" y="78">Docs-only agent</text>
+            <text class="ow-small" x="308" y="98">writes /openwiki only</text>
+            <text class="ow-small" x="308" y="116">plan then delete _plan.md</text>
+
+            <path class="ow-line" d="M492 88 H 560" />
+            <rect id="mode-code-wiki" class="ow-box" x="560" y="28" width="176" height="72" rx="10">
+              <title>Generated repository wiki</title>
+            </rect>
+            <text class="ow-label" x="576" y="58">openwiki/</text>
+            <text class="ow-small" x="576" y="78">quickstart + sections</text>
+            <rect id="mode-code-host" class="ow-box" x="560" y="112" width="176" height="72" rx="10">
+              <title>Host writes agent pointers and workflow</title>
+            </rect>
+            <text class="ow-label" x="576" y="142">Host setup</text>
+            <text class="ow-small" x="576" y="162">AGENTS.md · CI yml</text>
+            <rect id="mode-code-practices" class="ow-box" x="756" y="70" width="180" height="72" rx="10">
+              <title>best-practices.md used-in-repo inventory</title>
+            </rect>
+            <text class="ow-label" x="772" y="100">best-practices.md</text>
+            <text class="ow-small" x="772" y="120">used-in-repo inventory</text>
+            <path class="ow-line" d="M736 64 H 756" />
+            <path class="ow-line" d="M736 148 H 756 V 106 H 756" />
+
+            <line x1="24" y1="204" x2="936" y2="204" class="ow-line" />
+
+            <text class="ow-kicker" x="24" y="228">PERSONAL MODE · ~/.openwiki/wiki</text>
+            <rect id="mode-pers-src" class="ow-box" x="24" y="244" width="220" height="72" rx="10">
+              <title>Connectors write raw dumps</title>
+            </rect>
+            <text class="ow-label" x="40" y="274">Connectors</text>
+            <text class="ow-small" x="40" y="294">gmail · x · notion · git…</text>
+            <path class="ow-line" d="M244 280 H 300" />
+            <rect id="mode-pers-raw" class="ow-box" x="300" y="244" width="200" height="72" rx="10">
+              <title>Raw dumps under ~/.openwiki/connectors</title>
+            </rect>
+            <text class="ow-label" x="316" y="274">Raw dumps</text>
+            <text class="ow-small" x="316" y="294">~/.openwiki/connectors</text>
+            <path class="ow-line" d="M500 280 H 556" />
+            <rect id="mode-pers-wiki" class="ow-box" x="556" y="236" width="200" height="88" rx="10">
+              <title>Personal wiki synthesis pages</title>
+            </rect>
+            <text class="ow-label" x="572" y="266">wiki synthesis</text>
+            <text class="ow-small" x="572" y="286">themes · questions</text>
+            <text class="ow-small" x="572" y="304">commitments · sources</text>
+            <rect id="mode-pers-chat" class="ow-box" x="780" y="244" width="156" height="72" rx="10">
+              <title>Chat answers from wiki first</title>
+            </rect>
+            <text class="ow-label" x="796" y="274">Chat</text>
+            <text class="ow-small" x="796" y="294">wiki-first answers</text>
+            <path class="ow-line" d="M756 280 H 780" />
+            <defs>
+              <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M0 0 L8 4 L0 8 Z" fill="currentColor" opacity="0.45" />
+              </marker>
+            </defs>
+          </svg>
+        </figure>
+      </section>
+
+      <section id="documentation" class="mt-16">
+        <p class="type-mono text-xs tracking-[0.22em] uppercase text-base-content/50">Documentation contract</p>
+        <h2 class="type-display mt-1 text-3xl sm:text-4xl">A navigable wiki, then stop</h2>
+        <p class="mt-3 max-w-3xl text-base-content/80">
+          Init builds a first-pass map. Updates are maintenance. The prompt forbids thin stub directories, inventing APIs, and documenting every file. Humans and future agents share the same entrypoint.
+        </p>
+
+        <div class="mt-6 overflow-x-auto rounded-box border border-base-content/10 bg-base-100">
+          <table class="table table-zebra">
+            <caption class="sr-only">What each documentation surface is for</caption>
+            <thead>
+              <tr>
+                <th>Surface</th>
+                <th>Who writes it</th>
+                <th>Job</th>
+                <th>Do not</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr id="row-quickstart">
+                <td class="type-mono text-sm">quickstart.md</td>
+                <td>Agent, every init</td>
+                <td>Entrypoint: what this is, where to go next</td>
+                <td>Become a file inventory</td>
+              </tr>
+              <tr id="row-sections">
+                <td class="type-mono text-sm">architecture/, agent/, …</td>
+                <td>Agent, as needed</td>
+                <td>Real domains with “what / why / watch / sources”</td>
+                <td>One-file stub folders</td>
+              </tr>
+              <tr id="row-practices">
+                <td class="type-mono text-sm">best-practices.md</td>
+                <td>Code-mode agent</td>
+                <td>Used-in-this-repo inventory + tags for rule tooling</td>
+                <td>Restate public language lore</td>
+              </tr>
+              <tr id="row-personal-canon">
+                <td class="type-mono text-sm">themes / questions / commitments</td>
+                <td>Personal-mode agent</td>
+                <td>Durable memory graph over connector dumps</td>
+                <td>Paste newsletters, receipts, source TODOs</td>
+              </tr>
+              <tr id="row-plan">
+                <td class="type-mono text-sm">_plan.md</td>
+                <td>Agent, mid-run</td>
+                <td>Temporary page list + evidence; deleted before finish</td>
+                <td>Leave it in the wiki</td>
+              </tr>
+              <tr id="row-meta">
+                <td class="type-mono text-sm">.last-update.json</td>
+                <td>Host runtime, after run</td>
+                <td>Anchor the next git/time window</td>
+                <td>Count as wiki content (excluded from hash)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="staleness" class="mt-16">
+        <p class="type-mono text-xs tracking-[0.22em] uppercase text-base-content/50">Staleness</p>
+        <h2 class="type-display mt-1 text-3xl sm:text-4xl">Freshness is a ladder, not a rewrite</h2>
+        <p class="mt-3 max-w-3xl text-base-content/80">
+          Scheduled CI is cheap only if most runs do nothing. OpenWiki therefore tries to spend zero tokens when the repo is quiet, few edits when a handful of files moved, and no metadata churn when the model looked and left the wiki alone.
+        </p>
+
+        <figure class="figure-frame mt-6 rounded-box p-4 sm:p-6">
+          <figcaption class="mb-3 type-mono text-xs uppercase tracking-widest text-base-content/60">
+            Q: when does an --update run actually change anything?
+          </figcaption>
+          <svg id="fig-stale" viewBox="0 0 960 420" width="100%" role="img" aria-labelledby="fig-stale-title">
+            <title id="fig-stale-title">Three staleness gates from git skip to hash metadata</title>
+            <style>
+              .ow-label { font: 500 14px "IBM Plex Sans", sans-serif; fill: currentColor; }
+              .ow-kicker { font: 500 11px "IBM Plex Mono", monospace; fill: currentColor; opacity: 0.62; }
+              .ow-small { font: 400 12px "IBM Plex Sans", sans-serif; fill: currentColor; }
+              .ow-line { fill: none; stroke: currentColor; stroke-width: 1.3; opacity: 0.4; }
+              .ow-box { fill: color-mix(in oklab, currentColor 6%, transparent); stroke: currentColor; stroke-width: 1.2; }
+            </style>
+            <rect id="gate-0" class="ow-box" x="40" y="28" width="200" height="92" rx="10">
+              <title>openwiki code --update with no extra user message</title>
+            </rect>
+            <text class="ow-kicker" x="56" y="52">START</text>
+            <text class="ow-label" x="56" y="76">code --update</text>
+            <text class="ow-small" x="56" y="96">no extra user message</text>
+
+            <path class="ow-line" d="M240 74 H 300" />
+            <rect id="gate-1" class="ow-box" x="300" y="20" width="280" height="108" rx="10">
+              <title>Gate 1: skip the model if git is unchanged since last update</title>
+            </rect>
+            <text class="ow-kicker" x="316" y="44">GATE 1 · getUpdateNoopStatus</text>
+            <text class="ow-label" x="316" y="70">Did git actually move?</text>
+            <text class="ow-small" x="316" y="90">HEAD, worktree, paths since</text>
+            <text class="ow-small" x="316" y="108">last gitHead in metadata</text>
+
+            <path class="ow-line" d="M580 50 H 640" />
+            <rect id="gate-1-skip" class="ow-box" x="640" y="20" width="280" height="60" rx="10">
+              <title>Skip agent entirely when only OpenWiki files or nothing changed</title>
+            </rect>
+            <text class="ow-label" x="656" y="44">SKIP agent</text>
+            <text class="ow-small" x="656" y="64">“no repository changes detected”</text>
+
+            <path class="ow-line" d="M440 128 V 168" />
+            <rect id="gate-2" class="ow-box" x="300" y="168" width="280" height="108" rx="10">
+              <title>Gate 2: agent runs with git evidence and a surgical prompt</title>
+            </rect>
+            <text class="ow-kicker" x="316" y="192">GATE 2 · prompt + git evidence</text>
+            <text class="ow-label" x="316" y="218">Surgical docs impact</text>
+            <text class="ow-small" x="316" y="238">source change → page → why</text>
+            <text class="ow-small" x="316" y="256">soft budget: &lt;5 files → 1–2 pages</text>
+
+            <path class="ow-line" d="M580 222 H 640" />
+            <rect id="gate-2-noop" class="ow-box" x="640" y="176" width="280" height="92" rx="10">
+              <title>Agent may conclude wiki is already current and write nothing</title>
+            </rect>
+            <text class="ow-label" x="656" y="204">Allowed no-op</text>
+            <text class="ow-small" x="656" y="224">wiki already accurate →</text>
+            <text class="ow-small" x="656" y="242">do not edit files</text>
+
+            <path class="ow-line" d="M440 276 V 316" />
+            <rect id="gate-3" class="ow-box" x="300" y="316" width="280" height="84" rx="10">
+              <title>Gate 3: SHA-256 snapshot of wiki excluding metadata</title>
+            </rect>
+            <text class="ow-kicker" x="316" y="340">GATE 3 · content snapshot</text>
+            <text class="ow-label" x="316" y="364">Did wiki bytes change?</text>
+            <text class="ow-small" x="316" y="382">hash openwiki/ minus metadata</text>
+
+            <path class="ow-line" d="M580 358 H 640" />
+            <rect id="gate-3-write" class="ow-box" x="640" y="300" width="280" height="52" rx="10">
+              <title>Write last-update.json only when the wiki hash changed</title>
+            </rect>
+            <text class="ow-label" x="656" y="332">Write .last-update.json</text>
+            <rect id="gate-3-hold" class="ow-box" x="640" y="360" width="280" height="40" rx="10">
+              <title>Hold metadata if hash matches so scheduled loops do not churn</title>
+            </rect>
+            <text class="ow-small" x="656" y="384">else hold timestamp (no CI churn)</text>
+          </svg>
+        </figure>
+
+        <div class="mt-6 overflow-x-auto rounded-box border border-base-content/10 bg-base-100">
+          <table class="table">
+            <caption class="px-4 py-3 text-left text-sm text-base-content/70">
+              Code-mode skip rules from <span class="type-mono">src/agent/utils.ts</span>. Personal mode does not use this git skip; it uses connector dumps plus explicit stale sections.
+            </caption>
+            <thead>
+              <tr>
+                <th>Condition</th>
+                <th>Skip agent?</th>
+                <th>Why</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>User passed an extra update message</td>
+                <td><span class="badge badge-outline">run</span></td>
+                <td><span class="type-mono">shouldCheckUpdateNoop</span> is false</td>
+              </tr>
+              <tr>
+                <td>No previous <span class="type-mono">gitHead</span></td>
+                <td><span class="badge badge-outline">run</span></td>
+                <td>Cannot bound the change window</td>
+              </tr>
+              <tr>
+                <td>Dirty worktree (except metadata file)</td>
+                <td><span class="badge badge-outline">run</span></td>
+                <td>Uncommitted source may be undocumented</td>
+              </tr>
+              <tr>
+                <td>HEAD moved, and some path is outside <span class="type-mono">openwiki/</span></td>
+                <td><span class="badge badge-outline">run</span></td>
+                <td>Source (or other) files changed</td>
+              </tr>
+              <tr>
+                <td>HEAD same, worktree clean</td>
+                <td><span class="badge badge-soft badge-success">skip</span></td>
+                <td>Nothing to refresh</td>
+              </tr>
+              <tr>
+                <td>HEAD moved, but every changed path is under <span class="type-mono">openwiki/</span></td>
+                <td><span class="badge badge-soft badge-success">skip</span></td>
+                <td>Avoid looping on wiki-only commits (the CI PR itself)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="mt-6 grid gap-4 lg:grid-cols-2">
+          <article class="card card-border bg-base-100">
+            <div class="card-body">
+              <h3 class="card-title type-display text-2xl">What the agent is allowed to do on update</h3>
+              <ul class="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-base-content/80">
+                <li>Read existing wiki + <span class="type-mono">.last-update.json</span>.</li>
+                <li>Use git since last <span class="type-mono">gitHead</span>, else since <span class="type-mono">updatedAt</span>, else last 20 commits.</li>
+                <li>Build a docs-impact plan before editing. Untied pages stay untouched.</li>
+                <li>Prefer replacing one stale sentence over adding paragraphs.</li>
+                <li>No formatting-only edits, no ritual source-map refreshes, no commit-hash lists.</li>
+                <li>If nothing relevant changed: write nothing, say the wiki is current.</li>
+              </ul>
+            </div>
+          </article>
+          <article class="card card-border bg-base-100">
+            <div class="card-body">
+              <h3 class="card-title type-display text-2xl">Personal wiki has a different clock</h3>
+              <ul class="mt-2 list-disc space-y-2 pl-5 text-sm leading-relaxed text-base-content/80">
+                <li>Evidence is connector raw files, not repo git.</li>
+                <li><span class="type-mono">open-questions.md</span>: Active / Answered / <strong>Stale</strong> (why + last seen).</li>
+                <li><span class="type-mono">themes.md</span>: first seen, last seen, confidence; mark stale when a signal stops recurring.</li>
+                <li>Chat is wiki-first. Raw dumps only if the wiki is missing, contradicted, or <em>clearly stale</em>.</li>
+                <li>Host schedules (launchd / pmset / GH Actions) keep the clock ticking without a human.</li>
+              </ul>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="agents" class="mt-16">
+        <p class="type-mono text-xs tracking-[0.22em] uppercase text-base-content/50">Agentic help</p>
+        <h2 class="type-display mt-1 text-3xl sm:text-4xl">The next coding agent should not rediscover the repo</h2>
+        <p class="mt-3 max-w-3xl text-base-content/80">
+          OpenWiki splits labor: the documentation agent writes the wiki; the CLI host writes the instruction files that other agents actually load. That split is load-bearing. If the wiki agent could rewrite <span class="type-mono">AGENTS.md</span>, it would fight whatever else you keep there.
+        </p>
+
+        <figure class="figure-frame mt-6 rounded-box p-4 sm:p-6">
+          <figcaption class="mb-3 type-mono text-xs uppercase tracking-widest text-base-content/60">
+            Q: who writes AGENTS.md, and what does a future agent do with it?
+          </figcaption>
+          <svg id="fig-agents" viewBox="0 0 960 300" width="100%" role="img" aria-labelledby="fig-agents-title">
+            <title id="fig-agents-title">Host plants OpenWiki markers; future coding agents follow them into the wiki</title>
+            <style>
+              .ow-label { font: 500 13px "IBM Plex Sans", sans-serif; fill: currentColor; }
+              .ow-kicker { font: 500 11px "IBM Plex Mono", monospace; fill: currentColor; opacity: 0.62; }
+              .ow-small { font: 400 12px "IBM Plex Sans", sans-serif; fill: currentColor; }
+              .ow-line { fill: none; stroke: currentColor; stroke-width: 1.3; opacity: 0.4; }
+              .ow-box { fill: color-mix(in oklab, currentColor 6%, transparent); stroke: currentColor; stroke-width: 1.2; }
+            </style>
+            <rect id="ag-host" class="ow-box" x="24" y="36" width="220" height="100" rx="10">
+              <title>ensureCodeModeRepoSetup in src/code-mode.ts</title>
+            </rect>
+            <text class="ow-kicker" x="40" y="60">HOST · each code run</text>
+            <text class="ow-label" x="40" y="86">ensureCodeModeRepoSetup</text>
+            <text class="ow-small" x="40" y="108">not the wiki agent</text>
+
+            <path class="ow-line" d="M244 86 H 300" />
+            <rect id="ag-files" class="ow-box" x="300" y="24" width="250" height="124" rx="10">
+              <title>AGENTS.md and CLAUDE.md OpenWiki marker blocks plus GitHub workflow</title>
+            </rect>
+            <text class="ow-kicker" x="316" y="48">PLANTED POINTERS</text>
+            <text class="ow-label" x="316" y="74">AGENTS.md + CLAUDE.md</text>
+            <text class="ow-small" x="316" y="96">&lt;!-- OPENWIKI:START --&gt;</text>
+            <text class="ow-small" x="316" y="114">+ .github/workflows/…</text>
+            <text class="ow-small" x="316" y="132">only that block is rewritten</text>
+
+            <path class="ow-line" d="M550 86 H 606" />
+            <rect id="ag-future" class="ow-box" x="606" y="24" width="330" height="124" rx="10">
+              <title>Future coding agent reads the pointer then the wiki</title>
+            </rect>
+            <text class="ow-kicker" x="622" y="48">FUTURE CODING AGENT</text>
+            <text class="ow-label" x="622" y="74">Read quickstart first</text>
+            <text class="ow-small" x="622" y="96">then best-practices, architecture,</text>
+            <text class="ow-small" x="622" y="114">workflow, ops, tests</text>
+            <text class="ow-small" x="622" y="132">do not hand-edit generated pages</text>
+
+            <rect id="ag-docs-only" class="ow-box" x="24" y="176" width="912" height="96" rx="10">
+              <title>Docs-only backend refuses writes outside openwiki/</title>
+            </rect>
+            <text class="ow-kicker" x="40" y="200">WIKI AGENT CONSTRAINT</text>
+            <text class="ow-label" x="40" y="226">OpenWikiLocalShellBackend docsOnly=true on init/update</text>
+            <text class="ow-small" x="40" y="248">Refuses writes outside /openwiki/. Prompt also says: do not edit AGENTS.md / CLAUDE.md during normal code wiki runs. Chat is not docs-only, so follow-up chat can still change files if asked.</text>
+          </svg>
+        </figure>
+
+        <div class="mt-6 grid gap-4 md:grid-cols-3">
+          <article class="card card-border bg-base-100">
+            <div class="card-body">
+              <h3 class="card-title text-lg">Stable marker block</h3>
+              <p class="text-sm leading-relaxed text-base-content/75">
+                If the file exists, only the <span class="type-mono">OPENWIKI:START…END</span> span is replaced. Your other rules stay. Missing files are created.
+              </p>
+            </div>
+          </article>
+          <article class="card card-border bg-base-100">
+            <div class="card-body">
+              <h3 class="card-title text-lg">Wiki written for agents</h3>
+              <p class="text-sm leading-relaxed text-base-content/75">
+                Each page should say where to start, what breaks, which tests matter. Source maps are optional. Canonical homes beat copy-paste.
+              </p>
+            </div>
+          </article>
+          <article class="card card-border bg-base-100">
+            <div class="card-body">
+              <h3 class="card-title text-lg">Inventory as glue</h3>
+              <p class="text-sm leading-relaxed text-base-content/75">
+                <span class="type-mono">best-practices.md</span> is tagged (language, archetype, libs, module) so external rule packs can attach without guessing the stack.
+              </p>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section id="code" class="mt-16">
+        <p class="type-mono text-xs tracking-[0.22em] uppercase text-base-content/50">Evidence in source</p>
+        <h2 class="type-display mt-1 text-3xl sm:text-4xl">The three files that enforce this</h2>
+        <p class="mt-3 max-w-3xl text-base-content/80">
+          Claims above are from these implementations, not from the generated wiki. The wiki in this repo is itself an OpenWiki output and can lag the prompt.
+        </p>
+
+        <div class="mt-6 space-y-8">
+          <div>
+            <p class="mb-2 type-mono text-sm text-base-content/70">
+              <span class="font-medium text-base-content">src/agent/utils.ts</span>
+              — skip the model when git has not produced a source change since the last recorded head.
+            </p>
+            <div id="code-noop" class="overflow-hidden rounded-box border border-base-content/10"></div>
+          </div>
+          <div>
+            <p class="mb-2 type-mono text-sm text-base-content/70">
+              <span class="font-medium text-base-content">src/agent/index.ts</span>
+              — hash the wiki before and after; write metadata only on a real content change.
+            </p>
+            <div id="code-hash" class="overflow-hidden rounded-box border border-base-content/10"></div>
+          </div>
+          <div>
+            <p class="mb-2 type-mono text-sm text-base-content/70">
+              <span class="font-medium text-base-content">src/code-mode.ts</span>
+              — host plants the agent pointer without letting the wiki agent own AGENTS.md.
+            </p>
+            <div id="code-agents" class="overflow-hidden rounded-box border border-base-content/10"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="compare" class="mt-16">
+        <p class="type-mono text-xs tracking-[0.22em] uppercase text-base-content/50">Code vs personal</p>
+        <h2 class="type-display mt-1 text-3xl sm:text-4xl">Same runtime, different freshness story</h2>
+        <div class="mt-6 overflow-x-auto rounded-box border border-base-content/10 bg-base-100">
+          <table class="table table-zebra">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Code / repository</th>
+                <th>Personal / local wiki</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th>Root</th>
+                <td class="type-mono text-sm">./openwiki/</td>
+                <td class="type-mono text-sm">~/.openwiki/wiki/</td>
+              </tr>
+              <tr>
+                <th>Evidence</th>
+                <td>Git since last head</td>
+                <td>Connector raw dumps + source pages</td>
+              </tr>
+              <tr>
+                <th>Skip-the-model gate</th>
+                <td>Yes, git noop</td>
+                <td>No equivalent git skip</td>
+              </tr>
+              <tr>
+                <th>Stale vocabulary</th>
+                <td>Surgical page edits, allowed no-op</td>
+                <td>Open questions → Stale; themes last-seen</td>
+              </tr>
+              <tr>
+                <th>Agent files</th>
+                <td>Host writes AGENTS.md + CLAUDE.md</td>
+                <td>Explicitly does not manage those</td>
+              </tr>
+              <tr>
+                <th>Write fence</th>
+                <td>docs-only: /openwiki only</td>
+                <td>wiki root; connectors via tools</td>
+              </tr>
+              <tr>
+                <th>Automation</th>
+                <td>GitHub/GitLab PR of openwiki + pointers</td>
+                <td>launchd crons + ingest all/one source</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="watch" class="mt-16 mb-8">
+        <p class="type-mono text-xs tracking-[0.22em] uppercase text-base-content/50">Things that drift</p>
+        <h2 class="type-display mt-1 text-3xl sm:text-4xl">Where this design can lie to you</h2>
+        <div class="mt-6 grid gap-3">
+          <div role="alert" class="alert alert-warning">
+            <span>
+              Generated <span class="type-mono">openwiki/</span> in this repo can lag <span class="type-mono">src/agent/prompt.ts</span>. Prefer source when they disagree. The wiki even warns: do not hand-edit generated pages.
+            </span>
+          </div>
+          <div role="alert" class="alert">
+            <span>
+              Git noop skip is code-mode only. A quiet personal wiki still spends a model call unless you skip the command yourself.
+            </span>
+          </div>
+          <div role="alert" class="alert">
+            <span>
+              Chat runs are not docs-only. The fence is on init/update. Follow-up chat can write outside the wiki if the user asks.
+            </span>
+          </div>
+          <div role="alert" class="alert">
+            <span>
+              If a scheduled update only changes wiki files, the next run skips — by design. Source that landed in the same commit as a wiki PR would also be skipped. That is the loop-break; it is also a blind spot.
+            </span>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script type="module">
+      import { File } from "https://esm.sh/@pierre/diffs@1.2.10?bundle";
+
+      const darkQuery = window.matchMedia("(prefers-color-scheme: dark)");
+      const pageIsDark = () => document.documentElement.dataset.theme === "night";
+
+      const noopFile = {
+        name: "src/agent/utils.ts",
+        contents: `export async function getUpdateNoopStatus(cwd: string): Promise<UpdateNoopStatus> {
+  const lastUpdate = await readLastUpdate(cwd, "repository");
+  if (!lastUpdate?.gitHead) {
+    return { shouldSkip: false, reason: "missing previous update git head" };
+  }
+  const head = await getGitHead(cwd);
+  const status = await runGit(cwd, ["status", "--short", "--untracked-files=all"]);
+  const meaningfulStatus = status
+    .split("\\n")
+    .filter(Boolean)
+    .filter((line) => !isUpdateMetadataStatusLine(line));
+  if (meaningfulStatus.length > 0) {
+    return { shouldSkip: false, reason: "worktree has changes" };
+  }
+  if (head !== lastUpdate.gitHead) {
+    const committedPaths = await getChangedPathsSinceLastUpdate(cwd, lastUpdate.gitHead);
+    if (
+      committedPaths.length === 0 ||
+      committedPaths.some((changedPath) => !isOpenWikiPath(changedPath))
+    ) {
+      return { shouldSkip: false, reason: "git head changed" };
+    }
+  }
+  return { shouldSkip: true, gitHead: head, model: lastUpdate.model };
+}
+
+function isOpenWikiPath(changedPath: string): boolean {
+  return changedPath === OPEN_WIKI_DIR || changedPath.startsWith(\`\${OPEN_WIKI_DIR}/\`);
+}
+`,
+      };
+
+      const hashFile = {
+        name: "src/agent/index.ts",
+        contents: `if (command === "update" && shouldCheckUpdateNoop(options)) {
+  const noopStatus = await getUpdateNoopStatus(cwd);
+  if (noopStatus.shouldSkip) {
+    return { command, model: noopStatus.model, skipped: true };
+  }
+}
+
+const openWikiSnapshotBefore =
+  command === "chat" ? null : await createOpenWikiContentSnapshot(cwd, outputMode);
+
+// ... DeepAgent stream ...
+
+if (
+  command !== "chat" &&
+  openWikiSnapshotBefore !== (await createOpenWikiContentSnapshot(cwd, outputMode))
+) {
+  await writeLastUpdateMetadata(command, cwd, modelId, outputMode);
+}
+`,
+      };
+
+      const agentsFile = {
+        name: "src/code-mode.ts",
+        contents: `const OPENWIKI_AGENTS_SNIPPET_START = "<!-- OPENWIKI:START -->";
+const OPENWIKI_AGENTS_SNIPPET_END = "<!-- OPENWIKI:END -->";
+const CODE_MODE_AGENT_FILES = ["AGENTS.md", "CLAUDE.md"];
+
+export async function ensureCodeModeRepoSetup(cwd: string, cronExpression = DEFAULT_CODE_MODE_CRON) {
+  await writeCodeModeWorkflow(cwd, cronExpression);
+  await writeCodeModeAgentSnippets(cwd);
+}
+
+async function writeCodeModeAgentSnippet(agentsPath: string, snippet: string) {
+  let currentContent = "";
+  try { currentContent = await readFile(agentsPath, "utf8"); } catch (error) {
+    if (!isFileNotFoundError(error)) throw error;
+  }
+  const startIndex = currentContent.indexOf(OPENWIKI_AGENTS_SNIPPET_START);
+  const endIndex = currentContent.indexOf(OPENWIKI_AGENTS_SNIPPET_END);
+  const nextContent =
+    startIndex !== -1 && endIndex !== -1 && endIndex > startIndex
+      ? currentContent.slice(0, startIndex) + snippet +
+        currentContent.slice(endIndex + OPENWIKI_AGENTS_SNIPPET_END.length)
+      : currentContent.trimEnd() + (currentContent.trim() ? "\\n\\n" : "") + snippet + "\\n";
+  await writeFile(agentsPath, nextContent, "utf8");
+}
+`,
+      };
+
+      function options() {
+        return {
+          theme: { light: "min-light", dark: "min-dark" },
+          themeType: pageIsDark() ? "dark" : "light",
+          overflow: "wrap",
+        };
+      }
+
+      const instances = [];
+      function renderAll() {
+        const opts = options();
+        const specs = [
+          ["#code-noop", noopFile],
+          ["#code-hash", hashFile],
+          ["#code-agents", agentsFile],
+        ];
+        for (const [sel, file] of specs) {
+          const el = document.querySelector(sel);
+          el.replaceChildren();
+          new File(opts).render({ containerWrapper: el, file });
+        }
+      }
+
+      renderAll();
+      const toggle = document.querySelector('input.toggle');
+      toggle?.addEventListener("change", renderAll);
+    </script>
+  </body>
+</html>
