@@ -5,7 +5,7 @@ import {
   type WriteResult,
 } from "deepagents";
 import { OPEN_WIKI_DIR } from "../constants.js";
-import type { OpenWikiOutputMode } from "./types.js";
+import type { OpenWikiCommand, OpenWikiOutputMode } from "./types.js";
 
 type OpenWikiBackendOptions = LocalShellBackendOptions & {
   docsOnly?: boolean;
@@ -57,8 +57,15 @@ export class OpenWikiLocalShellBackend extends LocalShellBackend {
       return null;
     }
 
-    return `OpenWiki repository init/update runs may only write under /${OPEN_WIKI_DIR}/. Refused path: ${filePath}`;
+    return `OpenWiki repository runs may only write under /${OPEN_WIKI_DIR}/. Refused path: ${filePath}`;
   }
+}
+
+export function shouldUseDocsOnly(
+  command: OpenWikiCommand,
+  outputMode: OpenWikiOutputMode = "local-wiki",
+): boolean {
+  return outputMode === "repository" || command !== "chat";
 }
 
 export function isOpenWikiDocsPath(filePath: string): boolean {

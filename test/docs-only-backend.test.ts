@@ -5,6 +5,7 @@ import { describe, expect, test } from "vitest";
 import {
   isOpenWikiDocsPath,
   OpenWikiLocalShellBackend,
+  shouldUseDocsOnly,
 } from "../src/agent/docs-only-backend.ts";
 
 describe("OpenWikiLocalShellBackend", () => {
@@ -60,6 +61,14 @@ describe("OpenWikiLocalShellBackend", () => {
     await expect(
       readFile(path.join(rootDir, "quickstart.md"), "utf8"),
     ).resolves.toBe("ok");
+  });
+
+  test("keeps repository chat docs-only so follow-up climbs cannot write source", () => {
+    expect(shouldUseDocsOnly("chat", "repository")).toBe(true);
+    expect(shouldUseDocsOnly("init", "repository")).toBe(true);
+    expect(shouldUseDocsOnly("update", "repository")).toBe(true);
+    expect(shouldUseDocsOnly("chat", "local-wiki")).toBe(false);
+    expect(shouldUseDocsOnly("init", "local-wiki")).toBe(true);
   });
 
   test("keeps chat-mode style backends unrestricted when docsOnly is false", async () => {

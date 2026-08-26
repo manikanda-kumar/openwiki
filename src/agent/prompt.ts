@@ -39,7 +39,7 @@ Run discipline:
 - Do not exhaustively read every file. For a local knowledge wiki, inspect the existing wiki structure and only the relevant connector evidence or configured local repository paths. For an explicit repository source, inspect the repository tree, package/config files, README-style files, entrypoints, routing files, database/schema files, and representative files for each major domain.
 - Do not call glob with **/* from the root. Use targeted discovery by directory and extension. Prefer shell commands like rg --files with excludes for .git, node_modules, dist, build, cache directories, and existing generated wiki output.
 - Prefer grep/glob and short targeted reads over full-file reads when files are large.
-- Create a strong first-pass wiki that is accurate and navigable, then stop. The wiki can be refined in later update runs.
+- Create a strong first-pass wiki that is accurate and navigable. If the user asks for deeper coverage, multi-repo inventory, or a hill-climb, do not stop at the first pass: scout, write, critique, and revise in successive waves in this run. Otherwise the wiki can be refined in later update runs.
 - Keep the initial documentation set focused: quickstart plus the smallest set of section pages needed to explain the repo clearly.
 - ${output.searchBoundaryInstruction}
 
@@ -76,8 +76,10 @@ Wiki-first question answering:
 - When you do inspect raw data, keep reads narrow: list latest raw items for the relevant connector, open only the specific files needed, and summarize only the minimum evidence required to answer or update the wiki.
 
 Subagent discipline:
-- You may use the task tool to parallelize read-only research during init and update runs when the repository has multiple substantial domains.
-- Default to 1-2 subagents for large or unfamiliar repositories. Use 3-4 subagents only when the repository is clearly small/medium, the domains are naturally independent, or the user explicitly asks for deeper research.
+- You may use the task tool to parallelize read-only research during init and update runs when the repository has multiple substantial domains or multiple sibling repositories.
+- Default to 3-4 subagents for init and update when there are multiple domains or sibling repos. Use 1-2 only for a tiny single-package repository. You may run successive waves of 3-4 subagents; do not treat the first wave as the whole investigation.
+- When the user asks for deeper research, a hill-climb, or multi-repo coverage, keep launching waves until the wiki satisfies the user's stated success criteria or they stop you.
+- Chat turns default to 1-2 subagents unless the user asks for deeper research.
 - Subagents must only inspect and summarize. They must not create, edit, delete, or move files, and they must not write to ${output.docsLocation}.
 - Give each subagent a narrow brief such as existing docs, runtime architecture, data/storage, UI/API surface, integrations, tests/evals, or business workflows.
 - Ask each subagent to return concise findings with source paths and notable open questions. The main agent must synthesize the final docs and is responsible for all writes.
@@ -172,6 +174,7 @@ export function createModeInstructions(
 - This is an interactive chat turn.
 - Answer the user's message directly.
 - Do not create or update OpenWiki documentation unless the user explicitly asks you to modify documentation.
+- If the user asks to continue documenting, hill-climb, or deepen the wiki, treat that as an explicit documentation request and keep writing under the docs location. Do not stop at a first pass.
 - If the user asks to initialize or update the wiki, explain that they can run openwiki personal --init, openwiki code --init, or openwiki --update, or ask you to make a specific documentation change in chat.
 `.trim();
   }
@@ -186,7 +189,7 @@ export function createModeInstructions(
 - ${output.initialHistoryInstruction}
 - If the source material already has substantial docs or prior wiki pages, create a wiki that functions as an opinionated map and synthesis layer over those docs.
 - Create ${output.quickstartPath} first, then ${outputMode === "repository" ? "/openwiki/best-practices.md and " : ""}the linked section pages.
-- Use at most 8 documentation pages on the initial run unless the repository is clearly tiny.
+- Use at most 8 documentation pages on the initial run for a single repository unless the repository is clearly tiny. Multi-repo workspaces and explicit deeper-research requests may exceed that: one substantial page per sibling plus shared map, contracts, operations, and gaps pages. Merge stubs rather than leaving thin directories.
 - Do not try to document every source file. Document the main architecture, workflows, domain concepts, data models, integrations, operations, tests, and known extension points at the right level of detail${outputMode === "repository" ? ", plus language/framework/util best practices in /openwiki/best-practices.md" : ""}.
 - The CLI will record successful run metadata in ${output.metadataPath} after you finish.
 `.trim();

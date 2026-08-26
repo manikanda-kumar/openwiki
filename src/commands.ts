@@ -562,6 +562,21 @@ export function shouldRunNonInteractively(
   );
 }
 
+/**
+ * Ink sessions stay open after a successful init/update so the user can
+ * continue a documentation climb in follow-up chat. One-shot runs use --print
+ * and never enter this path.
+ */
+export function shouldAutoExitStartupRun(command: CliCommand): boolean {
+  if (command.kind !== "run" || command.dryRun || !command.shouldStart) {
+    return false;
+  }
+
+  // Interactive Ink sessions stay open after init/update so follow-up chat
+  // can continue a documentation climb. --print never uses this path.
+  return false;
+}
+
 export function isDevelopmentMode(): boolean {
   return (
     process.env.NODE_ENV === "development" || process.env.OPENWIKI_DEV === "1"
@@ -652,12 +667,12 @@ export const helpContent: HelpContent = {
     {
       label: "--init",
       description:
-        "Generate initial OpenWiki documentation for a selected mode. Use openwiki personal --init or openwiki code --init.",
+        "Generate initial OpenWiki documentation for a selected mode. Interactive runs stay open for follow-up. Use openwiki personal --init or openwiki code --init. Use -p/--print for a one-shot run.",
     },
     {
       label: "--update",
       description:
-        "Update existing OpenWiki documentation and ingest configured connectors when relevant.",
+        "Update existing OpenWiki documentation and ingest configured connectors when relevant. Interactive runs stay open for follow-up; use -p/--print for a one-shot run.",
     },
     {
       label: "--mode <personal|code>",

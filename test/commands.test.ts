@@ -1,5 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "vitest";
-import { parseCommand, shouldRunNonInteractively } from "../src/commands.ts";
+import {
+  parseCommand,
+  shouldAutoExitStartupRun,
+  shouldRunNonInteractively,
+} from "../src/commands.ts";
 
 // parseCommand's --dry-run gate consults isDevelopmentMode(), which reads
 // NODE_ENV / OPENWIKI_DEV. Pin both to a non-development state per test and
@@ -96,6 +100,14 @@ describe("parseCommand — init/update", () => {
 
   test("repeating the same command flag is allowed", () => {
     expect(parseCommand(["personal", "--init", "--init"]).kind).toBe("run");
+  });
+
+  test("interactive init and update stay open for follow-up instead of auto-exiting", () => {
+    const initCommand = parseCommand(["code", "--init"]);
+    const updateCommand = parseCommand(["code", "--update"]);
+
+    expect(shouldAutoExitStartupRun(initCommand)).toBe(false);
+    expect(shouldAutoExitStartupRun(updateCommand)).toBe(false);
   });
 });
 

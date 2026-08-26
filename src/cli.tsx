@@ -14,6 +14,7 @@ import {
   helpContent,
   isDevelopmentMode,
   parseCommand,
+  shouldAutoExitStartupRun,
   shouldRunNonInteractively,
   type CliCommand,
   type HelpRow,
@@ -3784,16 +3785,6 @@ function getRunModeCwd(mode: OpenWikiRunMode): string {
 
 function getRunModeOutputMode(mode: OpenWikiRunMode): OpenWikiOutputMode {
   return mode === "code" ? "repository" : "local-wiki";
-}
-
-function shouldAutoExitStartupRun(command: CliCommand): boolean {
-  return (
-    command.kind === "run" &&
-    !command.dryRun &&
-    !command.print &&
-    command.shouldStart &&
-    (command.command === "init" || command.command === "update")
-  );
 }
 
 async function runPrintCommand(

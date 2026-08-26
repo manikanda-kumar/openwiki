@@ -31,6 +31,23 @@ describe("code-mode best-practices prompt", () => {
     );
   });
 
+  it("asks init/update runs to use successive subagent waves instead of stopping at a first pass", () => {
+    const prompt = createSystemPrompt("init", "repository");
+
+    expect(prompt).toContain("Default to 3-4 subagents");
+    expect(prompt).toContain("successive waves");
+    expect(prompt).not.toContain("Default to 1-2 subagents");
+    expect(prompt).toContain("do not stop at the first pass");
+  });
+
+  it("lets multi-repo inits exceed the single-repo page budget", () => {
+    const repoInit = createModeInstructions("init", "repository");
+
+    expect(repoInit).toContain("at most 8 documentation pages");
+    expect(repoInit).toContain("Multi-repo");
+    expect(repoInit).toContain("one substantial page per sibling");
+  });
+
   it("mentions best-practices creation on repository init only", () => {
     const repoInit = createModeInstructions("init", "repository");
     const localInit = createModeInstructions("init", "local-wiki");

@@ -17,7 +17,10 @@ import {
 } from "../env.js";
 import { isFileNotFoundError } from "../fs-errors.js";
 import { openWikiLocalWikiDir } from "../openwiki-home.js";
-import { OpenWikiLocalShellBackend } from "./docs-only-backend.js";
+import {
+  OpenWikiLocalShellBackend,
+  shouldUseDocsOnly,
+} from "./docs-only-backend.js";
 import {
   CODEX_ORIGINATOR,
   CODEX_RESPONSES_BASE_URL,
@@ -172,7 +175,7 @@ async function runOpenWikiAgentCore(
     tools: createOpenWikiConnectorTools(),
     checkpointer,
     backend: new OpenWikiLocalShellBackend({
-      docsOnly: command !== "chat",
+      docsOnly: shouldUseDocsOnly(command, outputMode),
       maxOutputBytes: 100_000,
       outputMode,
       rootDir: cwd,
