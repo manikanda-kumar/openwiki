@@ -16,8 +16,9 @@ import type {
   ConnectorIngestResult,
   McpConnectorConfig,
 } from "./types.js";
+import { isSecretLikeKey } from "../platform/diagnostics.js";
 
-export type McpConnectorId = Extract<ConnectorId, "notion">;
+export type McpConnectorId = Extract<ConnectorId, "custom-mcp" | "notion">;
 
 export type McpToolDiscoveryResult = {
   connectorId: McpConnectorId;
@@ -35,7 +36,7 @@ export type McpToolCallResult = {
   toolName: string;
 };
 
-const MCP_CONNECTOR_IDS = new Set<ConnectorId>(["notion"]);
+const MCP_CONNECTOR_IDS = new Set<ConnectorId>(["custom-mcp", "notion"]);
 
 export function isMcpConnectorId(
   connectorId: ConnectorId,
@@ -271,8 +272,4 @@ function sanitizeValue(value: unknown): unknown {
   }
 
   return value;
-}
-
-function isSecretLikeKey(key: string): boolean {
-  return /(token|secret|password|authorization|api[-_]?key|cookie)/iu.test(key);
 }

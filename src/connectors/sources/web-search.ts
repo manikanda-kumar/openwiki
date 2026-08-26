@@ -1,5 +1,6 @@
 import { TavilySearch } from "@langchain/tavily";
-import { OPENWIKI_TAVILY_API_KEY_ENV_KEY } from "../../constants.js";
+import { OPENWIKI_TAVILY_API_KEY_ENV_KEY } from "../../config/constants.js";
+import { normalizeStringArray } from "../config.js";
 import {
   createRunId,
   readConnectorConfig,
@@ -8,6 +9,7 @@ import {
   writeConnectorState,
   writeRawJson,
 } from "../io.js";
+import { openWikiConnectorsDisplayPath } from "../../config/openwiki-home.js";
 import type {
   ConnectorDefinition,
   ConnectorIngestOptions,
@@ -42,6 +44,7 @@ const definition: ConnectorDefinition = {
     "Fetches web search results with Tavily through the LangChain Tavily integration.",
   displayName: "Web Search",
   id: "web-search",
+  mode: "personal",
   requiredEnv: [OPENWIKI_TAVILY_API_KEY_ENV_KEY],
   supportsAgenticDiscovery: false,
 };
@@ -77,11 +80,10 @@ async function ingest(
   if (!config.enabled) {
     return {
       connectorId: "web-search",
-      message:
-        "Web Search connector is not enabled. Set enabled=true in ~/.openwiki/connectors/web-search/config.json.",
+      message: `Web Search connector is not enabled. Set enabled=true in ${openWikiConnectorsDisplayPath}/web-search/config.json.`,
       rawFiles,
       runId,
-      statePath: "~/.openwiki/connectors/web-search/state.json",
+      statePath: `${openWikiConnectorsDisplayPath}/web-search/state.json`,
       status: "skipped",
       warnings,
     };
@@ -94,7 +96,7 @@ async function ingest(
       message: `${OPENWIKI_TAVILY_API_KEY_ENV_KEY} is required for Web Search ingestion.`,
       rawFiles,
       runId,
-      statePath: "~/.openwiki/connectors/web-search/state.json",
+      statePath: `${openWikiConnectorsDisplayPath}/web-search/state.json`,
       status: "error",
       warnings,
     };
@@ -104,11 +106,10 @@ async function ingest(
   if (queries.length === 0) {
     return {
       connectorId: "web-search",
-      message:
-        "No web search queries configured. Add queries to ~/.openwiki/connectors/web-search/config.json.",
+      message: `No web search queries configured. Add queries to ${openWikiConnectorsDisplayPath}/web-search/config.json.`,
       rawFiles,
       runId,
-      statePath: "~/.openwiki/connectors/web-search/state.json",
+      statePath: `${openWikiConnectorsDisplayPath}/web-search/state.json`,
       status: "skipped",
       warnings,
     };
@@ -169,19 +170,10 @@ async function ingest(
     }.`,
     rawFiles,
     runId,
-    statePath: "~/.openwiki/connectors/web-search/state.json",
+    statePath: `${openWikiConnectorsDisplayPath}/web-search/state.json`,
     status: "success",
     warnings,
   };
-}
-
-function normalizeStringArray(value: unknown): string[] {
-  return Array.isArray(value)
-    ? value.filter(
-        (item): item is string =>
-          typeof item === "string" && item.trim().length > 0,
-      )
-    : [];
 }
 
 function normalizeSearchDepth(

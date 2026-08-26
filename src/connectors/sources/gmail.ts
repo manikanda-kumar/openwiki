@@ -1,11 +1,14 @@
 import {
   OPENWIKI_GMAIL_ACCESS_TOKEN_ENV_KEY,
   OPENWIKI_GMAIL_REFRESH_TOKEN_ENV_KEY,
-} from "../../constants.js";
+} from "../../config/constants.js";
 import {
   getOAuthAccessToken,
   refreshOAuthAccessToken,
 } from "../../auth/tokens.js";
+import { fetchWithResilience } from "../http.js";
+import { normalizeStringArray } from "../config.js";
+import { openWikiConnectorsDisplayPath } from "../../config/openwiki-home.js";
 import {
   createRunId,
   readConnectorConfig,
@@ -25,9 +28,9 @@ type GmailConfig = {
   enabled?: boolean;
   format?: GmailMessageFormat;
   includeSpamTrash?: boolean;
-  labelIds?: string[];
+  labelIds?: unknown;
   maxMessages?: number;
-  metadataHeaders?: string[];
+  metadataHeaders?: unknown;
   pageSize?: number;
   query?: string;
   readOnlyOperations?: unknown[];
@@ -65,6 +68,7 @@ const definition: ConnectorDefinition = {
     "Fetches recent Gmail messages through the Gmail API with OAuth user credentials.",
   displayName: "Google / Gmail",
   id: "google",
+  mode: "personal",
   requiredEnv: [
     OPENWIKI_GMAIL_ACCESS_TOKEN_ENV_KEY,
     OPENWIKI_GMAIL_REFRESH_TOKEN_ENV_KEY,
@@ -83,16 +87,19 @@ async function ingest(
   options: ConnectorIngestOptions = {},
 ): Promise<ConnectorIngestResult> {
   const runId = createRunId();
-  const config = await readConnectorConfig<GmailConfig>("google", {
-    enabled: true,
-    format: "full",
-    includeSpamTrash: false,
-    labelIds: [],
-    maxMessages: 100,
-    metadataHeaders: DEFAULT_METADATA_HEADERS,
-    pageSize: 100,
-    query: "newer_than:1d",
-  });
+  const config = {
+    ...(await readConnectorConfig<GmailConfig>("google", {
+      enabled: true,
+      format: "full",
+      includeSpamTrash: false,
+      labelIds: [],
+      maxMessages: 100,
+      metadataHeaders: DEFAULT_METADATA_HEADERS,
+      pageSize: 100,
+      query: "newer_than:1d",
+    })),
+    ...((options.connectorConfig ?? {}) as GmailConfig),
+  };
   const state = await readConnectorState("google");
   const warnings: string[] = [];
   const rawFiles: string[] = [];
@@ -100,11 +107,10 @@ async function ingest(
   if (!isGmailEnabled(config)) {
     return {
       connectorId: "google",
-      message:
-        "Google / Gmail connector is not enabled. Set enabled=true in ~/.openwiki/connectors/google/config.json.",
+      message: `Google / Gmail connector is not enabled. Set enabled=true in ${openWikiConnectorsDisplayPath}/google/config.json.`,
       rawFiles,
       runId,
-      statePath: "~/.openwiki/connectors/google/state.json",
+      statePath: `${openWikiConnectorsDisplayPath}/google/state.json`,
       status: "skipped",
       warnings,
     };
@@ -173,7 +179,7 @@ async function ingest(
     message: `Fetched ${messages.length} Gmail message(s).`,
     rawFiles,
     runId,
-    statePath: "~/.openwiki/connectors/google/state.json",
+    statePath: `${openWikiConnectorsDisplayPath}/google/state.json`,
     status: rawFiles.length > 0 ? "success" : "skipped",
     warnings,
   };
@@ -183,7 +189,7 @@ async function listGmailMessages(
   accessToken: string,
   options: {
     includeSpamTrash?: boolean;
-    labelIds?: string[];
+    labelIds?: unknown;
     maxMessages: number;
     pageSize?: number;
     query?: string;
@@ -243,7 +249,7 @@ async function getGmailMessage(
   messageId: string,
   options: {
     format: GmailMessageFormat;
-    metadataHeaders?: string[];
+    metadataHeaders?: unknown;
   },
 ): Promise<unknown> {
   return await gmailApi(
@@ -303,7 +309,7 @@ async function fetchGmail(
     url.searchParams.append(key, value);
   }
 
-  return await fetch(url, {
+  return await fetchWithResilience(url, {
     headers: {
       Authorization: `Bearer ${accessToken}`,
     },
@@ -397,12 +403,6 @@ function clamp(value: number | undefined, min: number, max: number): number {
   }
 
   return Math.max(min, Math.min(max, Math.trunc(value ?? min)));
-}
-
-function normalizeStringArray(values: string[] | undefined): string[] {
-  return (values ?? [])
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
 }
 
 function removeEmptyValues(

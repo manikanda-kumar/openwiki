@@ -9,6 +9,7 @@ import {
   writeConnectorState,
   writeRawJson,
 } from "../io.js";
+import { openWikiConnectorsDisplayPath } from "../../config/openwiki-home.js";
 import type {
   ConnectorDefinition,
   ConnectorIngestOptions,
@@ -42,6 +43,7 @@ const definition: ConnectorDefinition = {
     "Reads local cloned Git repositories and writes compact manifests for the update agent.",
   displayName: "Local Git repositories",
   id: "git-repo",
+  mode: "personal",
   requiredEnv: [],
   supportsAgenticDiscovery: true,
 };
@@ -67,11 +69,10 @@ async function ingest(
   if (config.repos.length === 0) {
     return {
       connectorId: "git-repo",
-      message:
-        "No local repositories configured. Add repos to ~/.openwiki/connectors/git-repo/config.json.",
+      message: `No local repositories configured. Add repos to ${openWikiConnectorsDisplayPath}/git-repo/config.json.`,
       rawFiles,
       runId,
-      statePath: "~/.openwiki/connectors/git-repo/state.json",
+      statePath: `${openWikiConnectorsDisplayPath}/git-repo/state.json`,
       status: "skipped",
       warnings,
     };
@@ -121,7 +122,7 @@ async function ingest(
     message: `Wrote ${manifests.length} local git repo manifest(s).`,
     rawFiles,
     runId,
-    statePath: "~/.openwiki/connectors/git-repo/state.json",
+    statePath: `${openWikiConnectorsDisplayPath}/git-repo/state.json`,
     status: manifests.length > 0 ? "success" : "skipped",
     warnings,
   };

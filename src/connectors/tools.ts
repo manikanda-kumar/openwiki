@@ -3,15 +3,17 @@ import {
   type StructuredToolInterface,
 } from "@langchain/core/tools";
 import { constants as fsConstants } from "node:fs";
-import { open, readdir, stat } from "node:fs/promises";
+import { lstat, open, readdir, stat } from "node:fs/promises";
 import path from "node:path";
+import type { OpenWikiOutputMode } from "../agent/types.js";
 import {
   getConnectorConfigPath,
   getConnectorRawDir,
+  openWikiConnectorsDisplayPath,
   openWikiHomeDir,
   openWikiLocalWikiDir,
   resolveConnectorRawPath,
-} from "../openwiki-home.js";
+} from "../config/openwiki-home.js";
 import { createConnectorRegistry, isConnectorId } from "./registry.js";
 import {
   callMcpConnectorTool,
@@ -20,7 +22,18 @@ import {
 } from "./mcp-runtime.js";
 import type { ConnectorId, ConnectorIngestOptions } from "./types.js";
 
-export function createOpenWikiConnectorTools(): StructuredToolInterface[] {
+export function createOpenWikiConnectorTools(
+  outputMode: OpenWikiOutputMode = "local-wiki",
+): StructuredToolInterface[] {
+  // Connector tools perform credentialed external fetches (Gmail, Slack, X, ...)
+  // and write raw data under the OpenWiki home. They are a personal/local-wiki
+  // capability: a code-mode run documents a codebase and must never be handed
+  // connector ingestion, which otherwise throws on missing credentials and
+  // wastes tokens discovering sources it has no business touching. See #444.
+  if (outputMode === "repository") {
+    return [];
+  }
+
   return [
     new DynamicStructuredTool({
       name: "openwiki_list_connectors",
@@ -35,14 +48,13 @@ export function createOpenWikiConnectorTools(): StructuredToolInterface[] {
     }),
     new DynamicStructuredTool({
       name: "openwiki_list_mcp_tools",
-      description:
-        'List live MCP tools for a configured MCP connector and write discovery under ~/.openwiki/connectors/<id>/raw. Input: {"connectorId":"notion"}. Use exact returned tool names.',
+      description: `List live MCP tools for a configured MCP connector and write discovery under ${openWikiConnectorsDisplayPath}/<id>/raw. Input: {"connectorId":"notion"}. Use exact returned tool names.`,
       schema: {
         type: "object",
         properties: {
           connectorId: {
             type: "string",
-            enum: ["notion"],
+            enum: ["custom-mcp", "notion"],
           },
         },
         required: ["connectorId"],
@@ -55,8 +67,7 @@ export function createOpenWikiConnectorTools(): StructuredToolInterface[] {
     }),
     new DynamicStructuredTool({
       name: "openwiki_call_mcp_tool",
-      description:
-        'Call one exact discovered read-only MCP tool and write the result under ~/.openwiki/connectors/<id>/raw. Input: {"connectorId":"notion","toolName":"exact_tool_name","args":{"query":"Applied AI"}}.',
+      description: `Call one exact discovered read-only MCP tool and write the result under ${openWikiConnectorsDisplayPath}/<id>/raw. Input: {"connectorId":"notion","toolName":"exact_tool_name","args":{"query":"Applied AI"}}.`,
       schema: {
         type: "object",
         properties: {
@@ -66,7 +77,7 @@ export function createOpenWikiConnectorTools(): StructuredToolInterface[] {
           },
           connectorId: {
             type: "string",
-            enum: ["notion"],
+            enum: ["custom-mcp", "notion"],
           },
           toolName: {
             type: "string",
@@ -86,14 +97,14 @@ export function createOpenWikiConnectorTools(): StructuredToolInterface[] {
     }),
     new DynamicStructuredTool({
       name: "openwiki_ingest_connector",
-      description:
-        'Run deterministic ingestion for one built-in connector and write raw data/manifests under ~/.openwiki/connectors/<id>/raw. Input: {"connectorId":"x","streams":["bookmarks"],"limit":1}.',
+      description: `Run deterministic ingestion for one built-in connector and write raw data/manifests under ${openWikiConnectorsDisplayPath}/<id>/raw. Input: {"connectorId":"x","streams":["bookmarks"],"limit":1}.`,
       schema: {
         type: "object",
         properties: {
           connectorId: {
             type: "string",
             enum: [
+              "custom-mcp",
               "git-repo",
               "google",
               "hackernews",
@@ -134,17 +145,18 @@ export function createOpenWikiConnectorTools(): StructuredToolInterface[] {
     }),
     new DynamicStructuredTool({
       name: "openwiki_list_raw_items",
-      description:
-        'List raw files for a connector under ~/.openwiki/connectors/<id>/raw. Input: {"connectorId":"x"}.',
+      description: `List raw files for a connector under ${openWikiConnectorsDisplayPath}/<id>/raw. Input: {"connectorId":"x"}.`,
       schema: {
         type: "object",
         properties: {
           connectorId: {
             type: "string",
             enum: [
+              "custom-mcp",
               "git-repo",
               "google",
               "hackernews",
+              "langsmith",
               "notion",
               "slack",
               "web-search",
@@ -162,17 +174,18 @@ export function createOpenWikiConnectorTools(): StructuredToolInterface[] {
     }),
     new DynamicStructuredTool({
       name: "openwiki_read_raw_item",
-      description:
-        'Read a raw connector file by connector ID and relative path. Only files inside ~/.openwiki/connectors/<id>/raw are allowed. Input: {"connectorId":"x","path":"2026-.../bookmarks.json","maxBytes":50000}.',
+      description: `Read a raw connector file by connector ID and relative path. Only files inside ${openWikiConnectorsDisplayPath}/<id>/raw are allowed. Input: {"connectorId":"x","path":"2026-.../bookmarks.json","maxBytes":50000}.`,
       schema: {
         type: "object",
         properties: {
           connectorId: {
             type: "string",
             enum: [
+              "custom-mcp",
               "git-repo",
               "google",
               "hackernews",
+              "langsmith",
               "notion",
               "slack",
               "web-search",
@@ -282,7 +295,9 @@ async function ingestAllConnectors() {
 
 async function listRawItems(connectorId: ConnectorId) {
   const rawDir = getConnectorRawDir(connectorId);
-  const files = await listFiles(rawDir, rawDir);
+  const files = (await assertExistingRawDirHasNoSymlink(rawDir))
+    ? await listFiles(rawDir, rawDir)
+    : [];
   const latestRunId = getLatestRunId(files);
 
   return {
@@ -303,11 +318,10 @@ async function readRawItem(
   relativePath: string,
   maxBytes: number,
 ) {
+  const rawDir = getConnectorRawDir(connectorId);
   const filePath = resolveConnectorRawPath(connectorId, relativePath);
-  const fileHandle = await open(
-    filePath,
-    fsConstants.O_RDONLY | fsConstants.O_NOFOLLOW,
-  );
+  await assertRawItemPathHasNoSymlinks(rawDir, filePath);
+  const fileHandle = await open(filePath, getRawItemOpenFlags());
 
   try {
     const fileStat = await fileHandle.stat();
@@ -352,11 +366,61 @@ async function listFiles(
     if (entry.isDirectory()) {
       files.push(...(await listFiles(rootDir, entryPath)));
     } else if (entry.isFile()) {
-      files.push(path.relative(rootDir, entryPath));
+      files.push(normalizeRawRelativePath(path.relative(rootDir, entryPath)));
     }
   }
 
   return files.sort(compareRawFilePaths);
+}
+
+export function normalizeRawRelativePath(relativePath: string): string {
+  return relativePath.replace(/\\/gu, path.posix.sep);
+}
+
+async function assertRawItemPathHasNoSymlinks(
+  rawDir: string,
+  filePath: string,
+): Promise<void> {
+  await assertPathIsNotSymlink(rawDir);
+
+  const relativePath = path.relative(rawDir, filePath);
+  const parts = relativePath.split(path.sep).filter(Boolean);
+  let currentPath = rawDir;
+
+  for (const part of parts) {
+    currentPath = path.join(currentPath, part);
+    await assertPathIsNotSymlink(currentPath);
+  }
+}
+
+async function assertExistingRawDirHasNoSymlink(
+  rawDir: string,
+): Promise<boolean> {
+  try {
+    await assertPathIsNotSymlink(rawDir);
+    return true;
+  } catch (error) {
+    if (isFileNotFoundError(error)) {
+      return false;
+    }
+
+    throw error;
+  }
+}
+
+async function assertPathIsNotSymlink(filePath: string): Promise<void> {
+  const entryStat = await lstat(filePath);
+
+  if (entryStat.isSymbolicLink()) {
+    throw new Error("Raw item path must not contain symbolic links.");
+  }
+}
+
+function getRawItemOpenFlags(): number {
+  return (
+    fsConstants.O_RDONLY |
+    (typeof fsConstants.O_NOFOLLOW === "number" ? fsConstants.O_NOFOLLOW : 0)
+  );
 }
 
 function compareRawFilePaths(left: string, right: string): number {

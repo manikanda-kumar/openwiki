@@ -7,7 +7,7 @@ import {
   OPENAI_CHATGPT_EXPIRES_AT_ENV_KEY,
   OPENAI_CHATGPT_PLAN_ENV_KEY,
   OPENAI_CHATGPT_REFRESH_TOKEN_ENV_KEY,
-} from "../constants.js";
+} from "../config/constants.js";
 
 /**
  * ChatGPT/Codex OAuth client.
@@ -32,6 +32,117 @@ export const CODEX_RESPONSES_BASE_URL = "https://chatgpt.com/backend-api/codex";
 
 /** Free-text client label sent as the `originator` header/param. */
 export const CODEX_ORIGINATOR = "openwiki";
+
+const CODEX_LUNA_MODEL_ID = "gpt-5.6-luna";
+const CODEX_LUNA_ORIGINATOR = "codex_cli_rs";
+const CODEX_LUNA_USER_AGENT = "codex_cli_rs/0.0.0";
+export const CODEX_RESPONSES_LITE_HEADER =
+  "x-openai-internal-codex-responses-lite";
+
+/**
+ * Adapts requests for the ChatGPT-backed Codex endpoint at the final fetch
+ * boundary. LangChain supplies its own user agent after merging configured
+ * headers, while Luna is exposed only to the Codex request identity and uses
+ * the Responses Lite request constraints.
+ */
+export function createCodexFetch(
+  modelId: string,
+  fetchImpl: typeof fetch = globalThis.fetch,
+): typeof fetch {
+  return async (input, init) => {
+    const isCodexRequest = isCodexResponsesRequest(input);
+    const useLunaProtocol = modelId === CODEX_LUNA_MODEL_ID && isCodexRequest;
+    const omitPromptCacheRetention =
+      (modelId === "gpt-5.6" || modelId.startsWith("gpt-5.6-")) &&
+      isCodexRequest;
+
+    if (init?.body != null && typeof init.body === "string") {
+      try {
+        const payload: unknown = JSON.parse(init.body);
+
+        if (!isRecord(payload)) {
+          return fetchImpl(input, init);
+        }
+
+        let changed = false;
+
+        // The ChatGPT-backed Codex endpoint rejects this LangChain Responses
+        // option for GPT-5.6 models. Strip it at the final request boundary so
+        // `zdrEnabled` can still independently enforce the required store:false.
+        if (omitPromptCacheRetention && "prompt_cache_retention" in payload) {
+          delete payload.prompt_cache_retention;
+          changed = true;
+        }
+
+        if (Array.isArray(payload.input)) {
+          for (const item of payload.input) {
+            if (isRecord(item) && item.role === "system") {
+              item.role = "developer";
+              changed = true;
+            }
+          }
+        }
+
+        if (useLunaProtocol) {
+          const inputItems: unknown[] = Array.isArray(payload.input)
+            ? payload.input
+            : [];
+          const prefix = [];
+
+          if (Array.isArray(payload.tools)) {
+            prefix.push({
+              type: "additional_tools",
+              role: "developer",
+              tools: payload.tools,
+            });
+          }
+
+          if (
+            typeof payload.instructions === "string" &&
+            payload.instructions.length > 0
+          ) {
+            prefix.push({
+              type: "message",
+              role: "developer",
+              content: [{ type: "input_text", text: payload.instructions }],
+            });
+          }
+
+          payload.input = [...prefix, ...inputItems];
+          delete payload.instructions;
+          delete payload.tools;
+          payload.reasoning = {
+            ...(isRecord(payload.reasoning) ? payload.reasoning : {}),
+            context: "all_turns",
+          };
+          payload.parallel_tool_calls = false;
+          changed = true;
+        }
+
+        if (changed) {
+          init = { ...init, body: JSON.stringify(payload) };
+        }
+      } catch {
+        // Non-JSON body: forward unchanged.
+      }
+    }
+
+    if (useLunaProtocol) {
+      const headers = new Headers(
+        input instanceof Request ? input.headers : undefined,
+      );
+      new Headers(init?.headers).forEach((value, key) =>
+        headers.set(key, value),
+      );
+      headers.set("originator", CODEX_LUNA_ORIGINATOR);
+      headers.set("user-agent", CODEX_LUNA_USER_AGENT);
+      headers.set(CODEX_RESPONSES_LITE_HEADER, "true");
+      init = { ...init, headers };
+    }
+
+    return fetchImpl(input, init);
+  };
+}
 
 /**
  * Refresh the access token when it is within this many milliseconds of expiry,
@@ -188,6 +299,30 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 
 function asString(value: unknown): string | null {
   return typeof value === "string" && value.length > 0 ? value : null;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isCodexResponsesRequest(input: Parameters<typeof fetch>[0]): boolean {
+  const requestUrl =
+    typeof input === "string"
+      ? input
+      : input instanceof URL
+        ? input.toString()
+        : input.url;
+
+  try {
+    const actual = new URL(requestUrl);
+    const expected = new URL(`${CODEX_RESPONSES_BASE_URL}/responses`);
+
+    return (
+      actual.origin === expected.origin && actual.pathname === expected.pathname
+    );
+  } catch {
+    return false;
+  }
 }
 
 async function exchangeToken(body: URLSearchParams): Promise<CodexTokens> {
@@ -352,7 +487,7 @@ export async function loginWithChatGPT(
       res
         .writeHead(200, { "Content-Type": "text/html" })
         .end(
-          "<html><body>OpenWiki login complete you can close this tab.</body></html>",
+          "<html><body>OpenWiki login complete. You can close this tab.</body></html>",
         );
       finish(authCode);
     });

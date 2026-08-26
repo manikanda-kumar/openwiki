@@ -1,7 +1,9 @@
 export type ConnectorId =
+  | "custom-mcp"
   | "git-repo"
   | "google"
   | "hackernews"
+  | "langsmith"
   | "notion"
   | "slack"
   | "web-search"
@@ -15,6 +17,7 @@ export type ConnectorDefinition = {
   description: string;
   displayName: string;
   id: ConnectorId;
+  mode: "code" | "personal";
   requiredEnv: string[];
   supportsAgenticDiscovery: boolean;
 };
@@ -23,6 +26,7 @@ export type ConnectorIngestOptions = {
   connectorConfig?: Record<string, unknown>;
   instanceId?: string;
   limit?: number;
+  repoRoot?: string;
   streams?: string[];
   windowHours?: number;
 };

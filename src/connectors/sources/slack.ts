@@ -1,5 +1,7 @@
-import { OPENWIKI_SLACK_USER_TOKEN_ENV_KEY } from "../../constants.js";
+import { OPENWIKI_SLACK_USER_TOKEN_ENV_KEY } from "../../config/constants.js";
 import { getOAuthAccessToken } from "../../auth/tokens.js";
+import { normalizeStringArray } from "../config.js";
+import { openWikiConnectorsDisplayPath } from "../../config/openwiki-home.js";
 import {
   createRunId,
   readConnectorConfig,
@@ -8,6 +10,7 @@ import {
   writeConnectorState,
   writeRawJson,
 } from "../io.js";
+import { fetchWithResilience } from "../http.js";
 import type {
   ConnectorDefinition,
   ConnectorIngestOptions,
@@ -16,14 +19,14 @@ import type {
 } from "../types.js";
 
 type SlackConfig = {
-  assistantSearchQueries?: string[];
+  assistantSearchQueries?: unknown;
   conversationScanLimit?: number;
-  conversationTypes?: SlackConversationType[];
+  conversationTypes?: unknown;
   enabled?: boolean;
   maxConversations?: number;
   myMessagesSearchLimit?: number;
   messagesPerConversation?: number;
-  streams?: SlackStream[];
+  streams?: unknown;
 };
 
 type SlackStream =
@@ -132,6 +135,17 @@ const DEFAULT_CONVERSATION_TYPES: SlackConversationType[] = [
   "im",
   "mpim",
 ];
+const VALID_SLACK_STREAMS: readonly string[] = [
+  "assistant_search",
+  "my_messages_search",
+  "recent_messages",
+];
+const VALID_SLACK_CONVERSATION_TYPES: readonly string[] = [
+  "im",
+  "mpim",
+  "private_channel",
+  "public_channel",
+];
 
 const definition: ConnectorDefinition = {
   backend: "direct-api",
@@ -139,6 +153,7 @@ const definition: ConnectorDefinition = {
     "Fetches Slack conversations, recent messages, and assistant search context with a Slack user token.",
   displayName: "Slack",
   id: "slack",
+  mode: "personal",
   requiredEnv: [OPENWIKI_SLACK_USER_TOKEN_ENV_KEY],
   supportsAgenticDiscovery: false,
 };
@@ -154,16 +169,19 @@ async function ingest(
   options: ConnectorIngestOptions = {},
 ): Promise<ConnectorIngestResult> {
   const runId = createRunId();
-  const config = await readConnectorConfig<SlackConfig>("slack", {
-    assistantSearchQueries: [],
-    conversationScanLimit: 500,
-    conversationTypes: DEFAULT_CONVERSATION_TYPES,
-    enabled: false,
-    maxConversations: 50,
-    messagesPerConversation: 50,
-    myMessagesSearchLimit: 20,
-    streams: DEFAULT_STREAMS,
-  });
+  const config = {
+    ...(await readConnectorConfig<SlackConfig>("slack", {
+      assistantSearchQueries: [],
+      conversationScanLimit: 500,
+      conversationTypes: DEFAULT_CONVERSATION_TYPES,
+      enabled: false,
+      maxConversations: 50,
+      messagesPerConversation: 50,
+      myMessagesSearchLimit: 20,
+      streams: DEFAULT_STREAMS,
+    })),
+    ...((options.connectorConfig ?? {}) as SlackConfig),
+  };
   const state = await readConnectorState("slack");
   const warnings: string[] = [];
   const rawFiles: string[] = [];
@@ -175,7 +193,7 @@ async function ingest(
         "Slack connector is not enabled. Run openwiki auth configure slack --force to generate the direct Slack API config.",
       rawFiles,
       runId,
-      statePath: "~/.openwiki/connectors/slack/state.json",
+      statePath: `${openWikiConnectorsDisplayPath}/slack/state.json`,
       status: "skipped",
       warnings,
     };
@@ -187,7 +205,7 @@ async function ingest(
       message: `${OPENWIKI_SLACK_USER_TOKEN_ENV_KEY} is required for Slack ingestion.`,
       rawFiles,
       runId,
-      statePath: "~/.openwiki/connectors/slack/state.json",
+      statePath: `${openWikiConnectorsDisplayPath}/slack/state.json`,
       status: "error",
       warnings,
     };
@@ -301,11 +319,7 @@ async function ingest(
 
   if (streams.includes("assistant_search")) {
     const searches = [];
-    for (const query of config.assistantSearchQueries ?? []) {
-      if (query.trim().length === 0) {
-        continue;
-      }
-
+    for (const query of normalizeStringArray(config.assistantSearchQueries)) {
       searches.push({
         query,
         result: await slackApi(accessToken, "assistant.search.context", {
@@ -345,7 +359,7 @@ async function ingest(
     message: `Fetched ${rawFiles.length} Slack dump(s).`,
     rawFiles,
     runId,
-    statePath: "~/.openwiki/connectors/slack/state.json",
+    statePath: `${openWikiConnectorsDisplayPath}/slack/state.json`,
     status: rawFiles.length > 0 ? "success" : "skipped",
     warnings,
   };
@@ -533,14 +547,17 @@ async function slackApi(
   method: string,
   params: Record<string, string | undefined>,
 ): Promise<SlackApiResponse> {
-  const response = await fetch(`${SLACK_API_BASE_URL}/${method}`, {
-    body: new URLSearchParams(removeEmptyValues(params)),
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/x-www-form-urlencoded",
+  const response = await fetchWithResilience(
+    `${SLACK_API_BASE_URL}/${method}`,
+    {
+      body: new URLSearchParams(removeEmptyValues(params)),
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
+      method: "POST",
     },
-    method: "POST",
-  });
+  );
 
   if (!response.ok) {
     throw new Error(`Slack API request failed: ${response.status}`);
@@ -556,11 +573,17 @@ async function slackApi(
 }
 
 function normalizeStreams(
-  optionStreams: string[] | undefined,
+  optionStreams: unknown,
   configStreams: SlackConfig["streams"],
 ): SlackStream[] {
-  const requested = optionStreams?.length ? optionStreams : configStreams;
-  const streams = requested?.length ? requested : DEFAULT_STREAMS;
+  const requested =
+    Array.isArray(optionStreams) && optionStreams.length > 0
+      ? optionStreams
+      : configStreams;
+  const streams =
+    Array.isArray(requested) && requested.length > 0
+      ? requested
+      : DEFAULT_STREAMS;
   const normalized = streams.filter(isSlackStream);
 
   if (
@@ -576,27 +599,24 @@ function normalizeStreams(
 function normalizeConversationTypes(
   configTypes: SlackConfig["conversationTypes"],
 ): SlackConversationType[] {
-  const types = configTypes?.length ? configTypes : DEFAULT_CONVERSATION_TYPES;
+  const types =
+    Array.isArray(configTypes) && configTypes.length > 0
+      ? configTypes
+      : DEFAULT_CONVERSATION_TYPES;
 
   return types.filter(isSlackConversationType);
 }
 
-function isSlackStream(value: string): value is SlackStream {
-  return (
-    [
-      "assistant_search",
-      "my_messages_search",
-      "recent_messages",
-    ] as readonly string[]
-  ).includes(value);
+function isSlackStream(value: unknown): value is SlackStream {
+  return typeof value === "string" && VALID_SLACK_STREAMS.includes(value);
 }
 
 function isSlackConversationType(
-  value: string,
+  value: unknown,
 ): value is SlackConversationType {
   return (
-    ["im", "mpim", "private_channel", "public_channel"] as readonly string[]
-  ).includes(value);
+    typeof value === "string" && VALID_SLACK_CONVERSATION_TYPES.includes(value)
+  );
 }
 
 function clamp(value: number | undefined, min: number, max: number): number {
