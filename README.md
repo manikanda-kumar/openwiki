@@ -391,7 +391,18 @@ The wizard opens `https://auth.openai.com` in your browser (and prints the URL f
 
 <br/>
 
-The `openai-compatible` provider targets any OpenAI-compatible chat-completions endpoint via a required base URL. Set the model ID to whatever the endpoint exposes.
+The `openai-compatible` provider targets any OpenAI-compatible chat-completions endpoint. There is no default URL and no preset model list: you supply a base URL and a model ID the endpoint actually serves.
+
+Configure it during `openwiki --init` (provider → API key → base URL → custom model ID) or by writing `~/.openwiki/.env`. A shell export wins over the saved file.
+
+**Required**
+
+| Variable | What to set |
+| --- | --- |
+| `OPENWIKI_PROVIDER` | `openai-compatible` |
+| `OPENAI_COMPATIBLE_API_KEY` | Gateway key. Local servers that ignore auth still need a dummy value (for example `ollama` or `lm-studio`) because the client always sends one. |
+| `OPENAI_COMPATIBLE_BASE_URL` | API root (`http` or `https`). Use `https://host/v1`, not `https://host/v1/chat/completions` — the SDK appends `/chat/completions` itself and rejects a URL that already ends there. |
+| `OPENWIKI_MODEL_ID` | Whatever the endpoint exposes (`llama3.2`, `openai/gpt-5.5`, a loaded LM Studio id). |
 
 ```bash
 # Hosted gateway (for example Requesty, which fronts many upstream providers)
@@ -417,15 +428,23 @@ OPENAI_COMPATIBLE_BASE_URL=http://localhost:1234/v1
 OPENWIKI_MODEL_ID=your-loaded-model-id
 ```
 
-Some local servers ignore the API key value, but OpenWiki still requires `OPENAI_COMPATIBLE_API_KEY` because the client expects one.
+**Optional transport toggles.** Each is on only when the value trims to `true` (case-insensitive). Leave them unset unless your gateway needs them.
 
-**Streaming-only gateways.** Some gateways serve only the streaming transport: a non-streaming request is either rejected outright (`Stream must be set to true`) or answered with HTTP 200 and empty content, which leaves you with a blank wiki and no error. OpenWiki issues non-streaming requests internally, so force the streaming transport for those endpoints:
+| Variable | Default | When to set `true` |
+| --- | --- | --- |
+| `OPENWIKI_OPENAI_COMPATIBLE_STREAMING` | off (non-streaming HTTP) | Gateway only serves SSE, or a non-streaming request is rejected (`Stream must be set to true`) or returns HTTP 200 with empty content (blank wiki, no error). Enabling it reports estimated token counts. |
+| `OPENWIKI_OPENAI_COMPATIBLE_USE_RESPONSES_API` | off (chat completions) | Gateway exposes OpenAI's Responses API (`POST {baseURL}/responses`) instead of chat completions. |
+| `OPENWIKI_OPENAI_COMPATIBLE_STREAM_MESSAGES` | off (`updates` LangGraph mode) | Known-good endpoint that emits a `role: "assistant"` delta first. Default `updates` mode avoids a crash on gateways (for example z.ai GLM) that emit reasoning deltas before the first assistant delta. |
 
 ```bash
 OPENWIKI_OPENAI_COMPATIBLE_STREAMING=true
+OPENWIKI_OPENAI_COMPATIBLE_USE_RESPONSES_API=true
+OPENWIKI_OPENAI_COMPATIBLE_STREAM_MESSAGES=true
 ```
 
-It stays off by default because this provider points at arbitrary third-party endpoints, where SSE is not guaranteed to survive proxies and load balancers. Enabling it also makes the client report estimated rather than server-reported token counts.
+`OPENWIKI_OPENAI_COMPATIBLE_STREAMING` stays off by default because this provider points at arbitrary third-party endpoints, where SSE is not guaranteed to survive proxies and load balancers.
+
+`OPENWIKI_MAX_OUTPUT_TOKENS` and `OPENWIKI_PROVIDER_RETRY_ATTEMPTS` apply here the same as any other provider. `OPENWIKI_REASONING_EFFORT` is not supported for `openai-compatible` and will fail the run if set.
 
 </details>
 
