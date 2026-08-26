@@ -69,6 +69,33 @@ Keep it current automatically by adding a scheduled CI job that opens a docs PR 
 > [!NOTE]
 > On Windows, install with a Node.js package manager (`npm install -g openwiki` or `pnpm add -g openwiki`). Installing with `bun` can fall back to compiling the `better-sqlite3` native dependency, which needs Visual Studio Build Tools with the Desktop development with C++ workload.
 
+## Multi-repo workspaces
+
+To document several sibling Git clones as one code wiki, run OpenWiki from a **parent Git repository** that contains those clones. Nested `.git` directories are fine; the parent still needs its own Git history because generation fingerprints `HEAD` and Claims evidence must be `repo://…` URIs.
+
+Do not paste a long “meta-agent” prompt into `--init`. Code generation is already a resumable page-job loop (`begin → submit_plan → next_page → submit_page → finish`). The durable brief is user-owned [`openwiki/INSTRUCTIONS.md`](./static/overviews/INSTRUCTIONS.multi-repo.md): init replaces generated pages and Claims but **keeps** that file. The planner reads it as the wiki goal; page workers do not use a general-purpose `task` tool.
+
+```sh
+cd /path/to/parent-workspace
+git rev-parse --is-inside-work-tree   # must succeed
+
+mkdir -p openwiki
+cp /path/to/openwiki/static/overviews/INSTRUCTIONS.multi-repo.md openwiki/INSTRUCTIONS.md
+# edit INSTRUCTIONS.md for sibling names and Bitbucket project/workspace
+
+openwiki --init --print
+```
+
+If the process stops, rerun the **same** command (`--init` or `--update`). OpenWiki resumes from `openwiki/.run.json`. After init completes (the checkpoint is gone), run `openwiki --update --print` so Claims preflight can force pages whose evidence is stale or unresolved. A helper that copies the template if missing, resumes the checkpoint, then runs that update:
+
+```sh
+bash /path/to/openwiki/static/overviews/multi-repo-climb.sh
+```
+
+A Bitbucket CLI can discover remotes that are not cloned here. That output is not Claim evidence; put remote-only facts on a gaps page, or fetch the file into this tree first. Scheduled Bitbucket updates still use [`examples/openwiki-update.bitbucket-pipelines.yml`](./examples/openwiki-update.bitbucket-pipelines.yml) with a **full** clone.
+
+Runbook: [static/overviews/multi-repo-code-init-prompt.md](./static/overviews/multi-repo-code-init-prompt.md).
+
 ## Coding-agent integrations
 
 OpenWiki can run inside an existing coding agent instead of launching its own model. The coding agent investigates the repository, plans the wiki, and writes each assigned page sequentially with its native repository tools. OpenWiki provides the durable MCP page-job lifecycle, validates each completion, and deterministically finalizes Claims, indexes, provenance, setup files, and metadata.
@@ -127,7 +154,7 @@ OpenWiki runs in one of two modes. Bare `openwiki`, `openwiki --init`, and `open
 | **Code** _(default)_ | The current repository | `openwiki/` in the repo | `openwiki --init`          |
 | **Personal**         | Your connected sources | `~/.openwiki/wiki`      | `openwiki personal --init` |
 
-By default the CLI stays open after a run so you can send follow-up messages. Add `-p` / `--print` for a one-shot, non-interactive run that prints the final output and exits. `--init` and `--update` auto-exit on success in an interactive terminal, so the same command works one-shot or interactively.
+By default the CLI stays open after a run so you can send follow-up messages. Add `-p` / `--print` for a one-shot, non-interactive run that prints the final output and exits.
 
 ### Local state directory
 

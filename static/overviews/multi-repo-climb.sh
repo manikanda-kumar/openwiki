@@ -1,54 +1,81 @@
 #!/usr/bin/env bash
-# 2026-08-26 — Outer hill-climb loop for OpenWiki multi-repo docs.
-# Usage (from the parent workspace that contains sibling clones):
+# 2026-08-26 — Resume OpenWiki v0.4 page-job runs, then one Claims update.
+# Usage (parent git workspace with sibling clones):
 #   bash /Users/manik/Github/openwiki/static/overviews/multi-repo-climb.sh
-# Requires: openwiki on PATH, this prompt markdown beside the script or in BRIEF.
+# Env: MAX_ROUNDS (default 12), WIKI_DIR (default openwiki), BRIEF (INSTRUCTIONS template)
 
 set -euo pipefail
 
-BRIEF="${BRIEF:-$(cd "$(dirname "$0")" && pwd)/multi-repo-code-init-prompt.md}"
-MAX_ROUNDS="${MAX_ROUNDS:-8}"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+BRIEF="${BRIEF:-$ROOT/INSTRUCTIONS.multi-repo.md}"
+MAX_ROUNDS="${MAX_ROUNDS:-12}"
 WIKI_DIR="${WIKI_DIR:-openwiki}"
+RUN_STATE="$WIKI_DIR/.run.json"
 
-if [[ ! -f "$BRIEF" ]]; then
-  echo "missing brief: $BRIEF" >&2
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "cwd must be a git repository (OpenWiki fingerprints HEAD and repo:// Claims)." >&2
   exit 1
 fi
 
-# Inner brief is everything from the agent-facing heading down.
-extract_brief() {
-  sed -n '/^## Inner brief/,$p' "$BRIEF"
-}
-
-round_status() {
-  local log="$WIKI_DIR/climb-log.md"
-  if [[ ! -f "$log" ]]; then
-    echo "missing"
-    return
+mkdir -p "$WIKI_DIR"
+if [[ ! -f "$WIKI_DIR/INSTRUCTIONS.md" ]]; then
+  if [[ ! -f "$BRIEF" ]]; then
+    echo "missing INSTRUCTIONS template: $BRIEF" >&2
+    exit 1
   fi
-  if grep -q '^RETURN: pass' "$log"; then
-    echo "pass"
-    return
-  fi
-  echo "continue"
-}
-
-if [[ ! -f "$WIKI_DIR/quickstart.md" ]]; then
-  echo "round 0: init"
-  openwiki code --init --print "$(extract_brief)"
+  cp "$BRIEF" "$WIKI_DIR/INSTRUCTIONS.md"
+  echo "wrote $WIKI_DIR/INSTRUCTIONS.md from template; edit it before a serious run"
 fi
 
-for ((round = 1; round <= MAX_ROUNDS; round++)); do
-  status="$(round_status)"
-  if [[ "$status" == "pass" ]]; then
-    echo "climb passed at round $((round - 1))"
-    exit 0
+run_mode_from_checkpoint() {
+  if [[ ! -f "$RUN_STATE" ]]; then
+    echo ""
+    return
   fi
-  echo "round $round: update ($status)"
-  openwiki code --update --print "$(extract_brief)
+  node -e "const s=require('node:fs').readFileSync(process.argv[1],'utf8'); process.stdout.write(JSON.parse(s).mode === 'update' ? 'update' : 'init')" "$RUN_STATE"
+}
 
-This is outer harness round $round of $MAX_ROUNDS. Read /openwiki/climb-log.md and /openwiki/gaps.md first. Continue the climb; do not restart from scratch. If the critic is clean and the success predicate holds, write RETURN: pass. Otherwise RETURN: continue with the next three targets."
+next_command() {
+  local checkpoint_mode
+  checkpoint_mode="$(run_mode_from_checkpoint)"
+  if [[ -n "$checkpoint_mode" ]]; then
+    echo "$checkpoint_mode"
+    return
+  fi
+  if [[ ! -f "$WIKI_DIR/quickstart.md" ]]; then
+    echo "init"
+    return
+  fi
+  echo "update"
+}
+
+finished_without_checkpoint=0
+cmd="$(next_command)"
+
+for ((round = 1; round <= MAX_ROUNDS; round++)); do
+  echo "round $round: openwiki --$cmd --print"
+  openwiki --"$cmd" --print
+
+  if [[ -f "$RUN_STATE" ]]; then
+    cmd="$(run_mode_from_checkpoint)"
+    finished_without_checkpoint=0
+    continue
+  fi
+
+  if [[ "$cmd" == "init" ]]; then
+    cmd="update"
+    finished_without_checkpoint=0
+    continue
+  fi
+
+  finished_without_checkpoint=1
+  echo "climb finished after round $round (update completed, no $RUN_STATE)"
+  exit 0
 done
 
-echo "max rounds reached; see $WIKI_DIR/climb-log.md" >&2
+if [[ "$finished_without_checkpoint" -eq 1 ]]; then
+  exit 0
+fi
+
+echo "max rounds reached; inspect $RUN_STATE" >&2
 exit 2
