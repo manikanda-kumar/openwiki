@@ -86,6 +86,49 @@ const NO_DELEGATION_MIDDLEWARE = createMiddleware({
     }),
 });
 
+function createRepositoryDiagnosticsMiddleware(worker: string) {
+  let modelCall = 0;
+
+  return createMiddleware({
+    name: "OpenWikiRepositoryWorkerDiagnostics",
+    wrapModelCall: async (request, handler) => {
+      const call = ++modelCall;
+      const startedAt = Date.now();
+      emitRepositoryDebug(
+        `model.start worker=${worker} call=${call} messages=${request.messages.length} tools=${request.tools?.length ?? 0}`,
+      );
+      const heartbeat = setInterval(() => {
+        emitRepositoryDebug(
+          `model.wait worker=${worker} call=${call} elapsedMs=${Date.now() - startedAt}`,
+        );
+      }, 60_000);
+      heartbeat.unref();
+
+      try {
+        const response = await handler(request);
+        emitRepositoryDebug(
+          `model.end worker=${worker} call=${call} elapsedMs=${Date.now() - startedAt}`,
+        );
+        return response;
+      } catch (error) {
+        emitRepositoryDebug(
+          `model.error worker=${worker} call=${call} elapsedMs=${Date.now() - startedAt} error=${error instanceof Error ? error.name : "unknown"}`,
+        );
+        throw error;
+      } finally {
+        clearInterval(heartbeat);
+      }
+    },
+  });
+}
+
+function emitRepositoryDebug(message: string): void {
+  if (process.env.OPENWIKI_DEBUG !== "1") return;
+  process.stderr.write(
+    `[openwiki:repository ${new Date().toISOString()}] ${message}\n`,
+  );
+}
+
 type PendingPageJob = Extract<
   NextRepositoryPageResult,
   { status: "pending" }
@@ -338,6 +381,7 @@ async function runPlanningAgent(
         permissions: AGENT_FILESYSTEM_PERMISSIONS,
         tools: PLANNER_FILESYSTEM_TOOLS,
       }),
+      createRepositoryDiagnosticsMiddleware("planner"),
       NO_DELEGATION_MIDDLEWARE,
     ],
     skills: ["/skills/"],
@@ -350,6 +394,7 @@ async function runPlanningAgent(
     agent,
     [{ role: "user", content: "Plan this repository wiki now." }],
     onEvent,
+    "planner",
   );
 
   if (!submitted || !run.state.plan) {
@@ -378,6 +423,9 @@ async function runPendingPageAgents(
 
     const pages = run.state.plan?.pages ?? [];
     const pageIndex = pages.findIndex(({ id }) => id === next.job.id) + 1;
+    emitRepositoryDebug(
+      `page.start page=${next.job.path} index=${pageIndex} count=${pages.length}`,
+    );
     onEvent?.({
       type: "repository_progress",
       stage: "generating",
@@ -387,6 +435,9 @@ async function runPendingPageAgents(
       pageCount: pages.length,
     });
     const skippedSnapshot = await runPageAgent(run, next.job, model, onEvent);
+    emitRepositoryDebug(
+      `page.end page=${next.job.path} outcome=${skippedSnapshot ? "skipped" : "complete"}`,
+    );
     if (skippedSnapshot) skipped.push(skippedSnapshot);
   }
 }
@@ -466,6 +517,7 @@ async function runPageAgent(
         permissions: AGENT_FILESYSTEM_PERMISSIONS,
         tools: PAGE_FILESYSTEM_TOOLS,
       }),
+      createRepositoryDiagnosticsMiddleware(job.path),
       NO_DELEGATION_MIDDLEWARE,
     ],
     skills: ["/skills/"],
@@ -488,6 +540,7 @@ async function runPageAgent(
         },
       ],
       onEvent,
+      job.path,
     );
   } catch (error) {
     if (submitted) return null;
@@ -526,6 +579,7 @@ async function streamWorkerTools(
   agent: ReturnType<typeof createDeepAgent>,
   messages: Array<{ role: "user"; content: string }>,
   onEvent?: (event: OpenWikiRunEvent) => void,
+  worker = "worker",
 ): Promise<void> {
   const stream = await agent.stream(
     { messages },
@@ -535,6 +589,13 @@ async function streamWorkerTools(
   for await (const chunk of stream) {
     const event = parseWorkerToolEvent(chunk);
     if (!event) continue;
+    if (event.type === "tool_start") {
+      emitRepositoryDebug(`tool.start worker=${worker} name=${event.name}`);
+    } else if (event.type === "tool_end") {
+      emitRepositoryDebug(
+        `tool.end worker=${worker} name=${event.name} status=${event.status}`,
+      );
+    }
     onEvent?.(event);
     await scheduler.yield();
   }
