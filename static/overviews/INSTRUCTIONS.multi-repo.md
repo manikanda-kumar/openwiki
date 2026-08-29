@@ -38,4 +38,4 @@ Do not invent services, APIs, owners, or files.
 
 ## Bitbucket
 
-Typical remote-only gaps: uncloned repos in the same project, default branch, `bitbucket-pipelines.yml`, open/merged PRs for *why* code looks this way. Record clone URLs on `gaps.md`. Do not treat marketing descriptions as architecture when code disagrees.
+Typical remote-only gaps: uncloned repos in the same project, default branch, `bitbucket-pipelines.yml`, open/merged PRs for _why_ code looks this way. Record clone URLs on `gaps.md`. Do not treat marketing descriptions as architecture when code disagrees.

@@ -1,678 +1,1488 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OpenWiki plan — model reasoning</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital,wght@0,400;1,400&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<style>
-:root {
-  --font-display: "Instrument Serif", "Times New Roman", serif;
-  --font-body: "Source Sans 3", "Segoe UI", sans-serif;
-  --font-mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
-  --bg: #f4efe6;
-  --bg-2: #ebe4d6;
-  --surface: #fbf8f1;
-  --surface2: #f3ece0;
-  --elevated: #fffdf8;
-  --border: rgba(36, 28, 18, 0.1);
-  --border-bright: rgba(36, 28, 18, 0.18);
-  --text: #241c12;
-  --text-dim: #6f6456;
-  --ink: #1c2a44;
-  --gold: #9a7420;
-  --gold-dim: rgba(154, 116, 32, 0.12);
-  --sage: #3f6b3a;
-  --sage-dim: rgba(63, 107, 58, 0.12);
-  --amber: #9a5b12;
-  --amber-dim: rgba(154, 91, 18, 0.12);
-  --rose: #8f2d2d;
-  --rose-dim: rgba(143, 45, 45, 0.1);
-  --slate: #3d5a73;
-  --slate-dim: rgba(61, 90, 115, 0.12);
-  --shadow: 0 8px 28px rgba(36, 28, 18, 0.06);
-}
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #14110e;
-    --bg-2: #1b1713;
-    --surface: #1e1a16;
-    --surface2: #26211b;
-    --elevated: #2a241e;
-    --border: rgba(245, 234, 214, 0.08);
-    --border-bright: rgba(245, 234, 214, 0.16);
-    --text: #f3eadc;
-    --text-dim: #b3a894;
-    --ink: #d8c7a2;
-    --gold: #e0b14a;
-    --gold-dim: rgba(224, 177, 74, 0.14);
-    --sage: #9dcc86;
-    --sage-dim: rgba(157, 204, 134, 0.12);
-    --amber: #f0b15a;
-    --amber-dim: rgba(240, 177, 90, 0.12);
-    --rose: #f0a0a0;
-    --rose-dim: rgba(240, 160, 160, 0.12);
-    --slate: #9ec0d9;
-    --slate-dim: rgba(158, 192, 217, 0.12);
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
-  }
-}
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  min-height: 100vh;
-  color: var(--text);
-  font-family: var(--font-body);
-  background-color: var(--bg);
-  background-image:
-    radial-gradient(ellipse at 8% -10%, var(--gold-dim), transparent 42%),
-    radial-gradient(ellipse at 92% 8%, var(--slate-dim), transparent 40%),
-    linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
-  overflow-wrap: break-word;
-}
-a { color: var(--gold); }
-code {
-  font-family: var(--font-mono);
-  font-size: 0.86em;
-  background: var(--gold-dim);
-  color: var(--ink);
-  padding: 0 5px;
-  border-radius: 3px;
-}
-.wrap {
-  max-width: 1380px;
-  margin: 0 auto;
-  display: grid;
-  grid-template-columns: 190px 1fr;
-  gap: 0 36px;
-  padding: 28px 32px 80px;
-}
-.toc {
-  position: sticky;
-  top: 20px;
-  align-self: start;
-  max-height: calc(100dvh - 40px);
-  overflow-y: auto;
-  padding: 8px 0 24px;
-}
-.toc::-webkit-scrollbar { width: 3px; }
-.toc::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 2px; }
-.toc-title {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  padding-bottom: 10px;
-  margin-bottom: 8px;
-  border-bottom: 1px solid var(--border);
-}
-.toc a {
-  display: block;
-  color: var(--text-dim);
-  text-decoration: none;
-  font-size: 12px;
-  padding: 5px 8px;
-  border-left: 2px solid transparent;
-  border-radius: 0 6px 6px 0;
-  line-height: 1.35;
-}
-.toc a:hover { color: var(--text); background: var(--surface2); }
-.toc a.active { color: var(--text); border-left-color: var(--gold); background: var(--gold-dim); }
-.main { min-width: 0; }
-.eyebrow {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--gold);
-  margin-bottom: 10px;
-}
-h1 {
-  font-family: var(--font-display);
-  font-size: clamp(36px, 5vw, 56px);
-  font-weight: 400;
-  letter-spacing: -0.02em;
-  line-height: 0.98;
-  color: var(--ink);
-  margin-bottom: 12px;
-}
-.lead {
-  font-size: 18px;
-  line-height: 1.55;
-  color: var(--text-dim);
-  max-width: 62ch;
-  margin-bottom: 22px;
-}
-.toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
-  margin-bottom: 22px;
-}
-select, .file-btn, .theme-btn {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--text);
-  background: var(--elevated);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-}
-select { min-width: 280px; }
-.file-btn input { display: none; }
-.kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
-  gap: 10px;
-  margin-bottom: 22px;
-}
-.kpi {
-  background: var(--elevated);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 14px 16px;
-  box-shadow: var(--shadow);
-  min-width: 0;
-  animation: fadeUp 0.4s ease both;
-  animation-delay: calc(var(--i, 0) * 0.05s);
-}
-.kpi b {
-  display: block;
-  font-family: var(--font-display);
-  font-size: 32px;
-  line-height: 1;
-  font-weight: 400;
-  color: var(--ink);
-}
-.kpi span {
-  display: block;
-  margin-top: 6px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-.sec-head {
-  display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin: 42px 0 14px;
-  scroll-margin-top: 18px;
-}
-.sec-head h2 {
-  font-family: var(--font-display);
-  font-size: 30px;
-  font-weight: 400;
-  color: var(--ink);
-}
-.sec-num {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--gold);
-  letter-spacing: 0.12em;
-}
-.ve-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px 18px;
-  min-width: 0;
-}
-.ve-card--hero {
-  background: color-mix(in srgb, var(--surface) 88%, var(--gold) 12%);
-  border-color: color-mix(in srgb, var(--border) 50%, var(--gold) 50%);
-  box-shadow: var(--shadow);
-}
-.ve-card--recessed {
-  background: color-mix(in srgb, var(--bg) 65%, var(--surface) 35%);
-  box-shadow: inset 0 1px 3px rgba(0,0,0,0.05);
-}
-.meta-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 10px 18px;
-  font-size: 13px;
-}
-.meta-grid dt {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin-bottom: 3px;
-}
-.meta-grid dd { color: var(--text); }
-.callout {
-  border-left: 3px solid var(--gold);
-  background: var(--gold-dim);
-  border-radius: 0 10px 10px 0;
-  padding: 14px 16px;
-  font-size: 14px;
-  line-height: 1.55;
-  margin-top: 12px;
-}
-.callout strong { color: var(--ink); }
-.folder-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 12px;
-}
-.folder {
-  border-top: 3px solid var(--slate);
-  animation: fadeUp 0.4s ease both;
-}
-.folder h3 {
-  font-family: var(--font-mono);
-  font-size: 12px;
-  color: var(--slate);
-  margin-bottom: 8px;
-}
-.folder li {
-  list-style: none;
-  padding: 5px 0 5px 14px;
-  position: relative;
-  font-size: 13px;
-  border-bottom: 1px solid var(--border);
-}
-.folder li:last-child { border-bottom: 0; }
-.folder li::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 12px;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--amber);
-}
-.folder li.complete::before { background: var(--sage); }
-.folder li.skipped::before { background: var(--rose); }
-.filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin: 0 0 14px;
-}
-.chip {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text-dim);
-  border-radius: 999px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-.chip.on {
-  background: var(--ink);
-  color: var(--bg);
-  border-color: var(--ink);
-}
-.page {
-  background: var(--elevated);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 18px 20px 16px;
-  margin-bottom: 14px;
-  min-width: 0;
-  box-shadow: var(--shadow);
-}
-.page.hidden { display: none; }
-.page-top {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px 12px;
-  align-items: center;
-  margin-bottom: 8px;
-}
-.status {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  padding: 3px 8px;
-  border-radius: 999px;
-}
-.status.complete { background: var(--sage-dim); color: var(--sage); }
-.status.pending { background: var(--amber-dim); color: var(--amber); }
-.status.skipped { background: var(--rose-dim); color: var(--rose); }
-.path {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
-}
-.page h3 {
-  font-family: var(--font-display);
-  font-size: 26px;
-  font-weight: 400;
-  color: var(--ink);
-  margin: 4px 0 10px;
-  line-height: 1.15;
-}
-.purpose {
-  font-size: 15px;
-  line-height: 1.55;
-  margin-bottom: 12px;
-}
-.instr {
-  list-style: none;
-  counter-reset: n;
-}
-.instr li {
-  counter-increment: n;
-  position: relative;
-  padding: 8px 0 8px 28px;
-  font-size: 14px;
-  line-height: 1.5;
-  border-top: 1px solid var(--border);
-}
-.instr li::before {
-  content: counter(n);
-  position: absolute;
-  left: 0;
-  top: 8px;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--gold);
-}
-.seeds, .related {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 10px;
-}
-.tag {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 3px 7px;
-  color: var(--text-dim);
-}
-.tag.rel { background: var(--slate-dim); color: var(--slate); }
-.block-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  margin: 12px 0 6px;
-}
-details.collapsible {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  overflow: hidden;
-  margin-top: 12px;
-  background: var(--surface);
-}
-details.collapsible summary {
-  padding: 10px 14px;
-  cursor: pointer;
-  font-family: var(--font-mono);
-  font-size: 12px;
-  list-style: none;
-}
-details.collapsible summary::-webkit-details-marker { display: none; }
-details.collapsible summary::before { content: "▸ "; color: var(--text-dim); }
-details.collapsible[open] summary::before { content: "▾ "; }
-.collapsible__body { padding: 0 14px 12px; border-top: 1px solid var(--border); }
-.diagram-shell__hint {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-dim);
-  margin-bottom: 8px;
-  opacity: 0.75;
-}
-.table-wrap { overflow-x: auto; padding: 0; }
-.link-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
-}
-.link-table th, .link-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border);
-  text-align: center;
-  min-width: 0;
-}
-.link-table th {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-  background: var(--surface2);
-}
-.link-table th.row, .link-table td.row {
-  text-align: left;
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--ink);
-  position: sticky;
-  left: 0;
-  background: var(--elevated);
-}
-.link-table td.hit { color: var(--gold); font-weight: 600; }
-.link-table tbody tr:nth-child(even) td { background: color-mix(in srgb, var(--gold) 6%, transparent); }
-.link-table tbody tr:nth-child(even) td.row { background: color-mix(in srgb, var(--gold) 6%, var(--elevated)); }
-.mermaid-wrap {
-  position: relative;
-  background: var(--elevated);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  overflow: hidden;
-  min-height: 280px;
-  cursor: grab;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-}
-.meta-grid code { overflow-wrap: anywhere; word-break: break-word; }
-.mermaid-wrap.is-panning { cursor: grabbing; user-select: none; }
-.zoom-controls {
-  position: absolute;
-  top: 8px;
-  right: 8px;
-  display: flex;
-  gap: 2px;
-  z-index: 10;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 2px;
-}
-.zoom-controls button {
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 14px;
-  cursor: pointer;
-  border-radius: 4px;
-}
-.zoom-controls button:hover { background: var(--border); color: var(--text); }
-.mermaid-viewport { position: relative; overflow: hidden; width: 100%; height: 100%; min-height: 300px; }
-.mermaid-canvas { position: absolute; top: 0; left: 0; }
-.zoom-label {
-  font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--text-dim);
-  padding: 0 6px;
-  white-space: nowrap;
-}
-.mermaid svg,
-.mermaid svg * { box-sizing: content-box; }
-.mermaid .nodeLabel { color: var(--text) !important; font-family: var(--font-body) !important; font-size: 15px !important; }
-.mermaid .edgeLabel { color: var(--text-dim) !important; background-color: var(--bg) !important; font-family: var(--font-mono) !important; font-size: 12px !important; }
-.mermaid .edgeLabel rect { fill: var(--bg) !important; }
-.empty {
-  padding: 28px;
-  text-align: center;
-  color: var(--text-dim);
-  font-style: italic;
-}
-@keyframes fadeUp {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-@media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
-}
-@media (max-width: 1000px) {
-  .wrap { grid-template-columns: 1fr; padding: 16px 16px 64px; }
-  .toc {
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    display: flex;
-    gap: 4px;
-    overflow-x: auto;
-    background: var(--bg);
-    border-bottom: 1px solid var(--border);
-    max-height: none;
-    margin: 0 -16px 12px;
-    padding: 8px 16px;
-  }
-  .toc-title { display: none; }
-  .toc a { white-space: nowrap; flex-shrink: 0; border-left: none; border-bottom: 2px solid transparent; }
-  .toc a.active { border-bottom-color: var(--gold); }
-  .sec-head { scroll-margin-top: 52px; }
-}
-</style>
-</head>
-<body>
-<div class="wrap">
-  <nav class="toc" id="toc">
-    <div class="toc-title">Plan</div>
-    <a href="#s1">1. Run</a>
-    <a href="#s2">2. How it planned</a>
-    <a href="#s3">3. Architecture</a>
-    <a href="#s4">4. Page graph</a>
-    <a href="#s5">5. Page briefs</a>
-  </nav>
-  <div class="main">
-    <p class="eyebrow">OpenWiki · submit_plan</p>
-    <h1>The wiki the model meant to write</h1>
-    <p class="lead">
-      OpenWiki does not keep chain-of-thought. The durable plan in
-      <code>.run.json</code> <em>is</em> the planner’s reasoning: why each page exists,
-      which files to start from, which neighbors to link, and the brief handed to the page worker.
-    </p>
-    <div class="toolbar">
-      <select id="runSelect" aria-label="Choose a run"></select>
-      <label class="file-btn">Load .run.json<input id="fileInput" type="file" accept=".json,application/json"></label>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OpenWiki plan — model reasoning</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Instrument+Serif:ital,wght@0,400;1,400&family=Source+Sans+3:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --font-display: "Instrument Serif", "Times New Roman", serif;
+        --font-body: "Source Sans 3", "Segoe UI", sans-serif;
+        --font-mono: "IBM Plex Mono", "SF Mono", Consolas, monospace;
+        --bg: #f4efe6;
+        --bg-2: #ebe4d6;
+        --surface: #fbf8f1;
+        --surface2: #f3ece0;
+        --elevated: #fffdf8;
+        --border: rgba(36, 28, 18, 0.1);
+        --border-bright: rgba(36, 28, 18, 0.18);
+        --text: #241c12;
+        --text-dim: #6f6456;
+        --ink: #1c2a44;
+        --gold: #9a7420;
+        --gold-dim: rgba(154, 116, 32, 0.12);
+        --sage: #3f6b3a;
+        --sage-dim: rgba(63, 107, 58, 0.12);
+        --amber: #9a5b12;
+        --amber-dim: rgba(154, 91, 18, 0.12);
+        --rose: #8f2d2d;
+        --rose-dim: rgba(143, 45, 45, 0.1);
+        --slate: #3d5a73;
+        --slate-dim: rgba(61, 90, 115, 0.12);
+        --shadow: 0 8px 28px rgba(36, 28, 18, 0.06);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #14110e;
+          --bg-2: #1b1713;
+          --surface: #1e1a16;
+          --surface2: #26211b;
+          --elevated: #2a241e;
+          --border: rgba(245, 234, 214, 0.08);
+          --border-bright: rgba(245, 234, 214, 0.16);
+          --text: #f3eadc;
+          --text-dim: #b3a894;
+          --ink: #d8c7a2;
+          --gold: #e0b14a;
+          --gold-dim: rgba(224, 177, 74, 0.14);
+          --sage: #9dcc86;
+          --sage-dim: rgba(157, 204, 134, 0.12);
+          --amber: #f0b15a;
+          --amber-dim: rgba(240, 177, 90, 0.12);
+          --rose: #f0a0a0;
+          --rose-dim: rgba(240, 160, 160, 0.12);
+          --slate: #9ec0d9;
+          --slate-dim: rgba(158, 192, 217, 0.12);
+          --shadow: 0 10px 30px rgba(0, 0, 0, 0.28);
+        }
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html {
+        scroll-behavior: smooth;
+      }
+      body {
+        min-height: 100vh;
+        color: var(--text);
+        font-family: var(--font-body);
+        background-color: var(--bg);
+        background-image:
+          radial-gradient(ellipse at 8% -10%, var(--gold-dim), transparent 42%),
+          radial-gradient(ellipse at 92% 8%, var(--slate-dim), transparent 40%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+        overflow-wrap: break-word;
+      }
+      a {
+        color: var(--gold);
+      }
+      code {
+        font-family: var(--font-mono);
+        font-size: 0.86em;
+        background: var(--gold-dim);
+        color: var(--ink);
+        padding: 0 5px;
+        border-radius: 3px;
+      }
+      .wrap {
+        max-width: 1380px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: 190px 1fr;
+        gap: 0 36px;
+        padding: 28px 32px 80px;
+      }
+      .toc {
+        position: sticky;
+        top: 20px;
+        align-self: start;
+        max-height: calc(100dvh - 40px);
+        overflow-y: auto;
+        padding: 8px 0 24px;
+      }
+      .toc::-webkit-scrollbar {
+        width: 3px;
+      }
+      .toc::-webkit-scrollbar-thumb {
+        background: var(--border-bright);
+        border-radius: 2px;
+      }
+      .toc-title {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        font-weight: 600;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        padding-bottom: 10px;
+        margin-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .toc a {
+        display: block;
+        color: var(--text-dim);
+        text-decoration: none;
+        font-size: 12px;
+        padding: 5px 8px;
+        border-left: 2px solid transparent;
+        border-radius: 0 6px 6px 0;
+        line-height: 1.35;
+      }
+      .toc a:hover {
+        color: var(--text);
+        background: var(--surface2);
+      }
+      .toc a.active {
+        color: var(--text);
+        border-left-color: var(--gold);
+        background: var(--gold-dim);
+      }
+      .main {
+        min-width: 0;
+      }
+      .eyebrow {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        letter-spacing: 0.16em;
+        text-transform: uppercase;
+        color: var(--gold);
+        margin-bottom: 10px;
+      }
+      h1 {
+        font-family: var(--font-display);
+        font-size: clamp(36px, 5vw, 56px);
+        font-weight: 400;
+        letter-spacing: -0.02em;
+        line-height: 0.98;
+        color: var(--ink);
+        margin-bottom: 12px;
+      }
+      .lead {
+        font-size: 18px;
+        line-height: 1.55;
+        color: var(--text-dim);
+        max-width: 62ch;
+        margin-bottom: 22px;
+      }
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 22px;
+      }
+      select,
+      .file-btn,
+      .theme-btn {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--text);
+        background: var(--elevated);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 8px 12px;
+        cursor: pointer;
+      }
+      select {
+        min-width: 280px;
+      }
+      .file-btn input {
+        display: none;
+      }
+      .kpis {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+        gap: 10px;
+        margin-bottom: 22px;
+      }
+      .kpi {
+        background: var(--elevated);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 14px 16px;
+        box-shadow: var(--shadow);
+        min-width: 0;
+        animation: fadeUp 0.4s ease both;
+        animation-delay: calc(var(--i, 0) * 0.05s);
+      }
+      .kpi b {
+        display: block;
+        font-family: var(--font-display);
+        font-size: 32px;
+        line-height: 1;
+        font-weight: 400;
+        color: var(--ink);
+      }
+      .kpi span {
+        display: block;
+        margin-top: 6px;
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+      }
+      .sec-head {
+        display: flex;
+        align-items: baseline;
+        gap: 12px;
+        margin: 42px 0 14px;
+        scroll-margin-top: 18px;
+      }
+      .sec-head h2 {
+        font-family: var(--font-display);
+        font-size: 30px;
+        font-weight: 400;
+        color: var(--ink);
+      }
+      .sec-num {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--gold);
+        letter-spacing: 0.12em;
+      }
+      .ve-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 16px 18px;
+        min-width: 0;
+      }
+      .ve-card--hero {
+        background: color-mix(in srgb, var(--surface) 88%, var(--gold) 12%);
+        border-color: color-mix(in srgb, var(--border) 50%, var(--gold) 50%);
+        box-shadow: var(--shadow);
+      }
+      .ve-card--recessed {
+        background: color-mix(in srgb, var(--bg) 65%, var(--surface) 35%);
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05);
+      }
+      .meta-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 10px 18px;
+        font-size: 13px;
+      }
+      .meta-grid dt {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-bottom: 3px;
+      }
+      .meta-grid dd {
+        color: var(--text);
+      }
+      .callout {
+        border-left: 3px solid var(--gold);
+        background: var(--gold-dim);
+        border-radius: 0 10px 10px 0;
+        padding: 14px 16px;
+        font-size: 14px;
+        line-height: 1.55;
+        margin-top: 12px;
+      }
+      .callout strong {
+        color: var(--ink);
+      }
+      .folder-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        gap: 12px;
+      }
+      .folder {
+        border-top: 3px solid var(--slate);
+        animation: fadeUp 0.4s ease both;
+      }
+      .folder h3 {
+        font-family: var(--font-mono);
+        font-size: 12px;
+        color: var(--slate);
+        margin-bottom: 8px;
+      }
+      .folder li {
+        list-style: none;
+        padding: 5px 0 5px 14px;
+        position: relative;
+        font-size: 13px;
+        border-bottom: 1px solid var(--border);
+      }
+      .folder li:last-child {
+        border-bottom: 0;
+      }
+      .folder li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 12px;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--amber);
+      }
+      .folder li.complete::before {
+        background: var(--sage);
+      }
+      .folder li.skipped::before {
+        background: var(--rose);
+      }
+      .filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin: 0 0 14px;
+      }
+      .chip {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text-dim);
+        border-radius: 999px;
+        padding: 4px 10px;
+        cursor: pointer;
+      }
+      .chip.on {
+        background: var(--ink);
+        color: var(--bg);
+        border-color: var(--ink);
+      }
+      .page {
+        background: var(--elevated);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 18px 20px 16px;
+        margin-bottom: 14px;
+        min-width: 0;
+        box-shadow: var(--shadow);
+      }
+      .page.hidden {
+        display: none;
+      }
+      .page-top {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 12px;
+        align-items: center;
+        margin-bottom: 8px;
+      }
+      .status {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        padding: 3px 8px;
+        border-radius: 999px;
+      }
+      .status.complete {
+        background: var(--sage-dim);
+        color: var(--sage);
+      }
+      .status.pending {
+        background: var(--amber-dim);
+        color: var(--amber);
+      }
+      .status.skipped {
+        background: var(--rose-dim);
+        color: var(--rose);
+      }
+      .path {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-dim);
+      }
+      .page h3 {
+        font-family: var(--font-display);
+        font-size: 26px;
+        font-weight: 400;
+        color: var(--ink);
+        margin: 4px 0 10px;
+        line-height: 1.15;
+      }
+      .purpose {
+        font-size: 15px;
+        line-height: 1.55;
+        margin-bottom: 12px;
+      }
+      .instr {
+        list-style: none;
+        counter-reset: n;
+      }
+      .instr li {
+        counter-increment: n;
+        position: relative;
+        padding: 8px 0 8px 28px;
+        font-size: 14px;
+        line-height: 1.5;
+        border-top: 1px solid var(--border);
+      }
+      .instr li::before {
+        content: counter(n);
+        position: absolute;
+        left: 0;
+        top: 8px;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--gold);
+      }
+      .seeds,
+      .related {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .tag {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 3px 7px;
+        color: var(--text-dim);
+      }
+      .tag.rel {
+        background: var(--slate-dim);
+        color: var(--slate);
+      }
+      .block-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin: 12px 0 6px;
+      }
+      details.collapsible {
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        overflow: hidden;
+        margin-top: 12px;
+        background: var(--surface);
+      }
+      details.collapsible summary {
+        padding: 10px 14px;
+        cursor: pointer;
+        font-family: var(--font-mono);
+        font-size: 12px;
+        list-style: none;
+      }
+      details.collapsible summary::-webkit-details-marker {
+        display: none;
+      }
+      details.collapsible summary::before {
+        content: "▸ ";
+        color: var(--text-dim);
+      }
+      details.collapsible[open] summary::before {
+        content: "▾ ";
+      }
+      .collapsible__body {
+        padding: 0 14px 12px;
+        border-top: 1px solid var(--border);
+      }
+      .diagram-shell__hint {
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-bottom: 8px;
+        opacity: 0.75;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        padding: 0;
+      }
+      .link-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+      .link-table th,
+      .link-table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid var(--border);
+        text-align: center;
+        min-width: 0;
+      }
+      .link-table th {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        background: var(--surface2);
+      }
+      .link-table th.row,
+      .link-table td.row {
+        text-align: left;
+        font-family: var(--font-mono);
+        font-size: 11px;
+        color: var(--ink);
+        position: sticky;
+        left: 0;
+        background: var(--elevated);
+      }
+      .link-table td.hit {
+        color: var(--gold);
+        font-weight: 600;
+      }
+      .link-table tbody tr:nth-child(even) td {
+        background: color-mix(in srgb, var(--gold) 6%, transparent);
+      }
+      .link-table tbody tr:nth-child(even) td.row {
+        background: color-mix(in srgb, var(--gold) 6%, var(--elevated));
+      }
+      .mermaid-wrap {
+        position: relative;
+        background: var(--elevated);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        overflow: hidden;
+        min-height: 280px;
+        cursor: grab;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      .meta-grid code {
+        overflow-wrap: anywhere;
+        word-break: break-word;
+      }
+      .mermaid-wrap.is-panning {
+        cursor: grabbing;
+        user-select: none;
+      }
+      .zoom-controls {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        display: flex;
+        gap: 2px;
+        z-index: 10;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        padding: 2px;
+      }
+      .zoom-controls button {
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: transparent;
+        color: var(--text-dim);
+        font-family: var(--font-mono);
+        font-size: 14px;
+        cursor: pointer;
+        border-radius: 4px;
+      }
+      .zoom-controls button:hover {
+        background: var(--border);
+        color: var(--text);
+      }
+      .mermaid-viewport {
+        position: relative;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+        min-height: 300px;
+      }
+      .mermaid-canvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+      }
+      .zoom-label {
+        font-family: var(--font-mono);
+        font-size: 10px;
+        color: var(--text-dim);
+        padding: 0 6px;
+        white-space: nowrap;
+      }
+      .mermaid svg,
+      .mermaid svg * {
+        box-sizing: content-box;
+      }
+      .mermaid .nodeLabel {
+        color: var(--text) !important;
+        font-family: var(--font-body) !important;
+        font-size: 15px !important;
+      }
+      .mermaid .edgeLabel {
+        color: var(--text-dim) !important;
+        background-color: var(--bg) !important;
+        font-family: var(--font-mono) !important;
+        font-size: 12px !important;
+      }
+      .mermaid .edgeLabel rect {
+        fill: var(--bg) !important;
+      }
+      .empty {
+        padding: 28px;
+        text-align: center;
+        color: var(--text-dim);
+        font-style: italic;
+      }
+      @keyframes fadeUp {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+          animation-duration: 0.01ms !important;
+          animation-iteration-count: 1 !important;
+          transition-duration: 0.01ms !important;
+        }
+      }
+      @media (max-width: 1000px) {
+        .wrap {
+          grid-template-columns: 1fr;
+          padding: 16px 16px 64px;
+        }
+        .toc {
+          position: sticky;
+          top: 0;
+          z-index: 20;
+          display: flex;
+          gap: 4px;
+          overflow-x: auto;
+          background: var(--bg);
+          border-bottom: 1px solid var(--border);
+          max-height: none;
+          margin: 0 -16px 12px;
+          padding: 8px 16px;
+        }
+        .toc-title {
+          display: none;
+        }
+        .toc a {
+          white-space: nowrap;
+          flex-shrink: 0;
+          border-left: none;
+          border-bottom: 2px solid transparent;
+        }
+        .toc a.active {
+          border-bottom-color: var(--gold);
+        }
+        .sec-head {
+          scroll-margin-top: 52px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <nav class="toc" id="toc">
+        <div class="toc-title">Plan</div>
+        <a href="#s1">1. Run</a>
+        <a href="#s2">2. How it planned</a>
+        <a href="#s3">3. Architecture</a>
+        <a href="#s4">4. Page graph</a>
+        <a href="#s5">5. Page briefs</a>
+      </nav>
+      <div class="main">
+        <p class="eyebrow">OpenWiki · submit_plan</p>
+        <h1>The wiki the model meant to write</h1>
+        <p class="lead">
+          OpenWiki does not keep chain-of-thought. The durable plan in
+          <code>.run.json</code> <em>is</em> the planner’s reasoning: why each
+          page exists, which files to start from, which neighbors to link, and
+          the brief handed to the page worker.
+        </p>
+        <div class="toolbar">
+          <select id="runSelect" aria-label="Choose a run"></select>
+          <label class="file-btn"
+            >Load .run.json<input
+              id="fileInput"
+              type="file"
+              accept=".json,application/json"
+          /></label>
+        </div>
+        <div class="kpis" id="kpis"></div>
+
+        <div class="sec-head" id="s1">
+          <span class="sec-num">01</span>
+          <h2>Run</h2>
+        </div>
+        <div class="ve-card ve-card--hero" id="runMeta"></div>
+
+        <div class="sec-head" id="s2">
+          <span class="sec-num">02</span>
+          <h2>How the model planned</h2>
+        </div>
+        <div class="ve-card" id="howCard"></div>
+        <div class="callout" id="planningContext"></div>
+
+        <div class="sec-head" id="s3">
+          <span class="sec-num">03</span>
+          <h2>Information architecture</h2>
+        </div>
+        <div class="folder-grid" id="folders"></div>
+
+        <div class="sec-head" id="s4">
+          <span class="sec-num">04</span>
+          <h2>Navigation graph</h2>
+        </div>
+        <p class="diagram-shell__hint">
+          A cell is marked when the planner linked at least one page in that
+          row-folder to a page in that column-folder via
+          <code>relatedPages</code>.
+        </p>
+        <div class="table-wrap ve-card" id="graphTable"></div>
+
+        <div class="sec-head" id="s5">
+          <span class="sec-num">05</span>
+          <h2>Page briefs</h2>
+        </div>
+        <div class="filters" id="filters"></div>
+        <div id="pages"></div>
+      </div>
     </div>
-    <div class="kpis" id="kpis"></div>
 
-    <div class="sec-head" id="s1"><span class="sec-num">01</span><h2>Run</h2></div>
-    <div class="ve-card ve-card--hero" id="runMeta"></div>
+    <script type="application/json" id="runs-data">
+      [
+        {
+          "label": "grok-cli · deepseek-v4-flash",
+          "source": "/tmp/openwiki-runs/grok-cli/deepseek-v4-flash/openwiki/.run.json",
+          "repo": "grok-cli",
+          "runId": "531068e7-ab04-4ef9-aa57-6a6164701a49",
+          "mode": "init",
+          "phase": "generating",
+          "startedAt": "2026-08-29T08:01:17.972Z",
+          "language": "en",
+          "model": "deepseek-v4-flash",
+          "producer": "openwiki/0.4.3",
+          "planningContext": null,
+          "deletePages": [],
+          "pages": [
+            {
+              "id": "4394fedc-10a0-494d-9b31-49abe1d2c7a8",
+              "path": "/openwiki/architecture/cli-and-config.md",
+              "title": "CLI surface, config & precedence",
+              "purpose": "How flags are parsed in src/args.ts (positional mode token, flag families, -- terminator, validation), how ~/.config/grok-cli/config.json merges over defaults in src/config.ts + src/defaults.ts, env keys (OPENROUTER_API_KEY), and the quality/economy model alias tables.",
+              "seedPaths": [
+                "README.md",
+                "src/args.ts",
+                "src/config.ts",
+                "src/defaults.ts",
+                "src/types.ts",
+                "test/args.test.ts",
+                "test/config.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/overview.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/concepts/modes-and-routing.md",
+                "/openwiki/concepts/web-search.md"
+              ],
+              "instructions": [
+                "Catalog the flag families: mode, output (--report/--raw/--output/--retrieve), web (--no-web/--web-fetch/--web-engine/--web-max-results/--web-max-total-results/--web-allowed-domains/--web-blocked-domains/--web-provider), x, bookmarks, profile (--economy), json/schema, --max-cost.",
+                "Document parseArgs rules exactly: a mode is only recognized as the first non-flag token; everything after -- is the prompt; unknown - flags error; -h/--help throws HelpRequested which cli.ts catches and prints HELP_TEXT with exit 0; missing prompt errors.",
+                "Include the quality vs economy model alias tables from src/defaults.ts and where resolveModel consumes them.",
+                "Record config precedence: CLI overrides config file overrides defaults; OPENROUTER_API_KEY env overrides file apiKey; resolveCliOptions applies defaultMode/defaultProfile only when not explicit."
+              ],
+              "status": "skipped"
+            },
+            {
+              "id": "7622f1b0-f65b-4724-a24f-3b8993bf7254",
+              "path": "/openwiki/architecture/openrouter-client.md",
+              "title": "OpenRouter client (requests, retries, sources, usage)",
+              "purpose": "The chat.completions wrapper in src/openrouter.ts and usage/cost bookkeeping in src/cost.ts: request body and tool construction, 3-attempt retry with backoff and Retry-After, status-to-error mapping, source extraction from citations/annotations, and usage/cost aggregation.",
+              "seedPaths": [
+                "src/cost.ts",
+                "src/openrouter.ts",
+                "src/types.ts",
+                "test/cost.test.ts",
+                "test/openrouter.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/output-and-formatting.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/concepts/web-search.md",
+                "/openwiki/operations/reliability-and-cost.md"
+              ],
+              "instructions": [
+                "Do not combine response_format json_object with OpenRouter server tools (observed garbage JSON like -1.5e-05); the client gates response_format on json && modelSupportsJsonObjectResponseFormat && no tools, and the two-pass pattern lives in /openwiki/architecture/pipeline.md.",
+                "Document extractSources (citations array plus message annotations url_citation, deduped by URL, title merged in) and cost.ts aggregation (addUsageCall, mergeUsage, costUsd only when every call reports a cost, server_tool_use summed).",
+                "Document mapOpenRouterError branches: 401/403 auth, 402 credits/quota, 404 or tool-use text when tools requested (model lacks server-tool support), 404/model/endpoint text (model unavailable), 429/>=500 provider error, generic fallback.",
+                "Document retry behavior: retryable = 429 or >=500 or fetch TypeError, 3 attempts max, backoff 2^attempt*1000ms with Retry-After (seconds) winning when larger; invalid response JSON surfaces OpenRouterError."
+              ],
+              "status": "complete"
+            },
+            {
+              "id": "a0b1dc82-5f25-4512-90a7-107e53bfdba3",
+              "path": "/openwiki/architecture/output-and-formatting.md",
+              "title": "Result model & output formatting",
+              "purpose": "The PipelineResult contract in src/types.ts and its rendering in src/formatters.ts: decision brief/report/raw/retrieve markdown and the --json payload, footer with cost/models/tool usage, stderr warnings/progress/hint, and parseDecisionAnswer in modes.ts.",
+              "seedPaths": [
+                "README.md",
+                "src/formatters.ts",
+                "src/modes.ts",
+                "src/retrieval.ts",
+                "src/types.ts",
+                "test/formatters.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/overview.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/concepts/web-search.md",
+                "/openwiki/operations/reliability-and-cost.md",
+                "/openwiki/workflows/retrieval.md"
+              ],
+              "instructions": [
+                "Document every PipelineResult field and when optional fields populate: answer (only --json brief parse), searchResults (retrieve/--retrieve/--output), schemaResult (--schema), xSignal (--x), bookmarks (--bookmarks).",
+                "Document parseDecisionAnswer tolerances: non-JSON or non-object content and empty decision objects become warnings with answer omitted, never thrown.",
+                "Document the footer line (Cost/Models/Tokens/Web searches) and the X report appendix (reportPath appended unless already in content).",
+                "Map invocation → stdout shape: default brief, --report, --raw, --json payload keys (mode, web, profile, output_format, answer, content, sources, warnings, usage), retrieve/--output results markdown, --schema pretty JSON (schema_result in --json); formatError emits JSON {error:{message}} on stderr when --json."
+              ],
+              "status": "complete"
+            },
+            {
+              "id": "dd272814-5454-4830-91b9-837b266a107a",
+              "path": "/openwiki/architecture/overview.md",
+              "title": "System overview & runtime domains",
+              "purpose": "High-level map of the CLI: entrypoint → args/config resolution → runMode pipeline → OpenRouter client → formatters → stdout/stderr; module-to-responsibility table; the runtime domains (CLI surface, pipeline, provider client, result model, integrations) and where each domain's pages live.",
+              "seedPaths": [
+                "docs/specs/2026-05-19-grok-cli-design.md",
+                "package.json",
+                "src/cli.ts",
+                "src/formatters.ts",
+                "src/modes.ts",
+                "src/openrouter.ts",
+                "src/types.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/cli-and-config.md",
+                "/openwiki/architecture/openrouter-client.md",
+                "/openwiki/architecture/output-and-formatting.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/concepts/modes-and-routing.md",
+                "/openwiki/testing/overview.md"
+              ],
+              "instructions": [
+                "Cross-link the domain pages: cli-and-config, pipeline, openrouter-client, output-and-formatting, concepts/modes-and-routing, and the integration/workflow pages.",
+                "Record the exit-code contract (0 success, 1 error) and the stdout/stderr split, including the web-enabled hint line and progress lines routed to stderr.",
+                "Summarize each src/*.ts module's responsibility in a table; note src/cli.ts is the only entrypoint (package.json bin maps grok-research to dist/cli.js built from src/cli.ts).",
+                "Use a mermaid sequence diagram for the request lifecycle: cli.ts main → parseArgs → loadConfig → resolveCliOptions/canonicalizeMode → resolveWebOptions/validateWebOptions/assertWebToolsCompatible → runMode (withBudget wrapper) → callOpenRouter → format* → stdout (or JSON error on stderr, exit 1)."
+              ],
+              "status": "complete"
+            },
+            {
+              "id": "c75b6d60-2973-418b-8f58-885a3323fbe6",
+              "path": "/openwiki/architecture/pipeline.md",
+              "title": "Pipeline orchestration (runMode)",
+              "purpose": "How src/modes.ts drives every research run: the withBudget wrapper and MaxCostExceededError, dispatch order (schema → multi → retrieve → deepresearch → single Grok call), two-pass --json + web and --schema + web, X/bookmark attachment and prompt injection, result normalization and parseDecisionAnswer.",
+              "seedPaths": [
+                "src/modes.ts",
+                "src/prompts.ts",
+                "test/modes.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/openrouter-client.md",
+                "/openwiki/concepts/modes-and-routing.md",
+                "/openwiki/concepts/web-search.md",
+                "/openwiki/operations/reliability-and-cost.md",
+                "/openwiki/workflows/multi-agent.md",
+                "/openwiki/workflows/retrieval.md"
+              ],
+              "instructions": [
+                "Document short-circuits: --x-only and --bookmarks-only return early with empty usage; --x-only + --bookmarks-only conflicts; normalizeResult/normalizeRetrieveResult/normalizeSchemaResult fill mode/profile/outputFormat/web and answer/schemaResult/searchResults fields; warnings are deduped and propagated.",
+                "Explain the two-pass invariant for --json and --schema with web enabled (research pass with tools, then a tool-less format pass) and why (json_object cannot combine with OpenRouter server tools).",
+                "Explain withBudget semantics: cumulative costUsd accumulation, pre-check and post-check, MaxCostExceededError thrown immediately, and that multi analysis legs run sequentially when maxCost is set but otherwise in parallel.",
+                "Use a mermaid flowchart for the runMode dispatch order, showing each branch and its call count (single Grok 1 call; --json+web and --schema+web two-pass 2 calls; multi 5 calls; deepresearch 1 Sonar call; retrieve 1 call or 2 with --output both)."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "a0bf163c-631b-4ab4-87a1-e5de6d7e5505",
+              "path": "/openwiki/concepts/modes-and-routing.md",
+              "title": "Modes, model routing & web compatibility",
+              "purpose": "The decision matrix behind which pipeline runs for each mode: models used, call counts, web grounding behavior, canonicalizeMode (research→deepresearch), modeAllowsWeb, modelSupportsServerTools assertion, and profile (quality/economy) resolution.",
+              "seedPaths": [
+                "README.md",
+                "src/config.ts",
+                "src/defaults.ts",
+                "src/types.ts",
+                "test/config.test.ts",
+                "test/modes.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/cli-and-config.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/concepts/web-search.md",
+                "/openwiki/workflows/multi-agent.md",
+                "/openwiki/workflows/retrieval.md"
+              ],
+              "instructions": [
+                "Document quality vs economy profile alias tables and where resolveModel/resolveWebModel pick aliases (auto→expert alias, fast→fast alias).",
+                "Explain canonicalizeMode deprecation warning, assertWebToolsCompatible (perplexity/* models cannot use server tools → error suggesting Grok alias or --no-web), and resolveWebOptions precedence (CLI --no-web > config web.search.enabled; retrieve forces search on).",
+                "Explain modeAllowsWeb (auto/fast/expert/retrieve only) and that deepresearch/multi/research never enable OpenRouter web tools even with flags; --retrieve/--output on those modes is ignored with a warning.",
+                "Produce a mode table from README and config.ts: auto/fast/expert (1 Grok call, web on by default), deepresearch (1 Sonar call, no web tools), research (deprecated alias for deepresearch), multi (Sonar + 3 Grok roles + synthesis, web off on legs), retrieve (web forced on)."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "405b8342-b11b-408e-921c-c1b1206e7742",
+              "path": "/openwiki/concepts/web-search.md",
+              "title": "Web search & OpenRouter server tools",
+              "purpose": "How web_search/web_fetch server tools behave and get configured: resolveWebOptions and validateWebOptions, buildTools parameter mapping (excluded_domains vs blocked_domains), engine/max-results defaults, token/cost overhead, and why two-pass JSON is required.",
+              "seedPaths": [
+                "README.md",
+                "src/config.ts",
+                "src/defaults.ts",
+                "src/openrouter.ts",
+                "test/config.test.ts",
+                "test/openrouter.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/openrouter-client.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/concepts/modes-and-routing.md",
+                "/openwiki/workflows/retrieval.md"
+              ],
+              "instructions": [
+                "Document buildTools: openrouter:web_search maps blockedDomains to excluded_domains while web_fetch keeps blocked_domains; engine omitted when auto; max_results/max_total_results/max_content_tokens defaults from DEFAULT_WEB_CONFIG.",
+                "Document resolveWebOptions: search gated on modeAllowsWeb, --no-web disables, retrieve forces search on, fetchEnabled requires searchEnabled (config fetch.enabled or --web-fetch); validateWebOptions errors for allowed+blocked conflict and --web-fetch without search.",
+                "Record cost notes from README: ~1.8k prompt-token overhead even with zero searches, searches inject context raising cost, engines like Exa/Parallel may bill separately, --web is deprecated no-op.",
+                "Restate the incompatibility invariant: json_object response_format must not be combined with server tools; two-pass handled in /openwiki/architecture/pipeline.md."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "b279b103-003c-4eed-ba50-f97f8eeba262",
+              "path": "/openwiki/integrations/tweetsmash-bookmarks.md",
+              "title": "TweetSmash bookmarks integration",
+              "purpose": "How --bookmarks/--bookmarks-only|related|limit|author|tag works: TweetSmash REST GET /v1/bookmarks, env key candidates, keyword+semantic query, the related authors/tags/terms pass, skip semantics, markdown formatting, and injection into prompts.",
+              "seedPaths": [
+                "src/bookmarks.ts",
+                "src/modes.ts",
+                "test/bookmarks.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/output-and-formatting.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/integrations/x-signal.md",
+                "/openwiki/quickstart.md"
+              ],
+              "instructions": [
+                "Document the five env key candidates (TWEETSMASH_API_KEY, TWEETSMASH_KEY, TWEETSMASH, TWEETSMASH_TOKEN) and the three skip reasons surfaced as warnings (no-api-key, empty-query, request failure captured via fetchBookmarkSignal catch).",
+                "Document the related pass: relatedTerms derives authors/tags/query words (max 6), each re-queried and routed as via author|tag|term, deduped by postId, relatedLimit clamped to 10; formatBookmarksMarkdown output is injected via withContext.",
+                "Document the request: GET https://api.tweetsmash.com/v1/bookmarks with q + vector_search_term, limit clamped 1..20 (default 8), author/tag filters, 12s timeout abort, and error mapping (429 rate limit, 401/403 auth, HTTP body preview).",
+                "Note --bookmarks-only builds a Saved Bookmarks Brief result with empty usage and no OpenRouter calls; --bookmarks + --x-only conflict is rejected in runMode."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "17980fa0-5e84-4110-b551-0e4aea56f90c",
+              "path": "/openwiki/integrations/x-signal.md",
+              "title": "X/Twitter signal via Grok agent (/whathappened)",
+              "purpose": "How --x/--x-only/--x-network|--x-timeout|--x-max-turns work: headless grok spawn, buildWhathappenedPrompt, marker block extraction, report path parsing, the nested --x guard, binary resolution, timeout handling, and prompt injection of the signal.",
+              "seedPaths": [
+                "README.md",
+                "src/modes.ts",
+                "src/x-signal.ts",
+                "test/x-signal.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/output-and-formatting.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/integrations/tweetsmash-bookmarks.md",
+                "/openwiki/workflows/multi-agent.md"
+              ],
+              "instructions": [
+                "Do not nest --x: env GROK_RESEARCH_X_ACTIVE=1 guard throws XSignalError telling in-session /whathappened use; the child spawn sets that env so nested grok-research --x fails loudly.",
+                "Document binary resolution (GROK_BIN, then ~/.grok/bin/grok, /usr/local/bin/grok, /opt/homebrew/bin/grok, then PATH 'grok') and the --x-only result shape (buildXOnlyResult with empty usage, sources, warnings).",
+                "Document parsing fallbacks: last JSON object candidate preferred, stderr fallback when stdout empty, marker block missing → full text with a warning, report path via labeled/free-text HTML regexes; timeout kills SIGTERM then SIGKILL after 2s.",
+                "Use a mermaid flow diagram for the spawn → parse → inject path: fetchXSignal → runProcess (grok -p --always-approve --output-format json --max-turns) → parseGrokHeadlessJson → parseXSignalText → xMarkdown into prompts via withContext."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "b9ce282c-7a38-4493-a7d5-b56da889cfca",
+              "path": "/openwiki/operations/reliability-and-cost.md",
+              "title": "Reliability, cost control & running the CLI",
+              "purpose": "Operational behavior: retry/backoff/Retry-After, --max-cost budget enforcement and unknown-cost warning, stderr progress gating and hint/warnings, exit codes, dev commands (pnpm build/dev/test/typecheck), and the scheduled OpenWiki update workflow.",
+              "seedPaths": [
+                ".github/workflows/openwiki-update.yml",
+                "docs/plans/2026-05-20-reliability-hardening.md",
+                "package.json",
+                "src/args.ts",
+                "src/cli.ts",
+                "src/modes.ts",
+                "src/openrouter.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/openrouter-client.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/quickstart.md",
+                "/openwiki/testing/overview.md"
+              ],
+              "instructions": [
+                "Document stderr output contract: web-enabled hint line, Step N/M progress gated on !options.json, warnings for deprecated flags (--web, research mode) and ignored flags; --json keeps stderr clean except JSON errors.",
+                "Document the exit-code contract (0 success, 1 error via process.exitCode) and dev workflow from package.json (pnpm dev/grok-research for checkout runs, pnpm build via tsup, pnpm test, pnpm typecheck).",
+                "Reference docs/plans/2026-05-20-reliability-hardening.md as the canonical record of retry/max-cost/progress features and note the scheduled openwiki-update.yml workflow regenerates openwiki/ (full history fetch, creates openwiki/update PR).",
+                "Summarize retry behavior (3 attempts, 429/>=500/fetch-TypeError, backoff 2^attempt*1000ms, Retry-After wins) and the --max-cost pre/post checks with MaxCostExceededError; cli.ts warns when costUsd is unknown so the limit was not enforced."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "da2f2b9d-7a80-410b-b659-d24e257dfb40",
+              "path": "/openwiki/testing/overview.md",
+              "title": "Testing strategy & validation invariants",
+              "purpose": "How the Vitest suite is organized per module and what invariants it pins (web tools per model, two-pass dispatch, budget abort sequencing, JSON tolerances, exit-code contract), plus the mock patterns used and guidance for validating changes narrowly.",
+              "seedPaths": [
+                "AGENTS.md",
+                "package.json",
+                "test/args.test.ts",
+                "test/bookmarks.test.ts",
+                "test/cli.test.ts",
+                "test/modes.test.ts",
+                "test/openrouter.test.ts",
+                "test/retrieval.test.ts",
+                "test/x-signal.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/overview.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/operations/reliability-and-cost.md",
+                "/openwiki/quickstart.md"
+              ],
+              "instructions": [
+                "Document the injection patterns: ModeCaller fake results for runMode tests, fetchImpl for bookmarks/openrouter, spawnImpl for x-signal, real spawnSync only in cli.test.ts.",
+                "Map each test file to its module and the invariants it pins: args (parse shapes, validation errors), config (web resolution, compatibility), modes (dispatch counts, two-pass, budget sequencing under --max-cost, parseDecisionAnswer), openrouter (tools mapping, retries, error mapping), retrieval (parse tolerance, scoring/merge), x-signal (prompt markers, parsing), bookmarks (key lookup, mapping, related terms), cli (spawnSync e2e for --json error contract).",
+                "Note runtime is Node >=20 and tests run via vitest (pnpm test).",
+                "Per AGENTS.md: prefer the narrowest quiet validation that proves the changed behavior, preserve complete failure output; typecheck strictness matters (tsc --noEmit, exactOptionalPropertyTypes)."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "fa686a4d-720c-4947-993e-3cad5d90c2a9",
+              "path": "/openwiki/workflows/multi-agent.md",
+              "title": "Multi-agent ensemble workflow",
+              "purpose": "How multi mode runs: Sonar research pass → three Grok role analyses (engineering/product/skeptic) → synthesis; parallel vs sequential dispatch under --max-cost; budget-abort and role-failure semantics; usage/source/warning merging.",
+              "seedPaths": [
+                "README.md",
+                "src/modes.ts",
+                "src/prompts.ts",
+                "test/modes.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/concepts/modes-and-routing.md",
+                "/openwiki/integrations/x-signal.md",
+                "/openwiki/operations/reliability-and-cost.md"
+              ],
+              "instructions": [
+                "Document dispatch: legs run via Promise.allSettled by default; with --max-cost they run sequentially (runSequential) so the budget pre-check stops dispatch the moment the cap is crossed.",
+                "Document failure semantics: MaxCostExceededError in any leg is rethrown (fatal, synthesis skipped); per-role failures become warning lines; if all roles fail the mode throws.",
+                "Document merging in runMulti: sources from research+synthesis, warnings from research+roles+synthesis, usage from all calls via mergeUsage, mode/profile/outputFormat stamped in normalizeResult.",
+                "Use a mermaid sequence diagram for the 5-call flow: research (Sonar, no web) → engineering/product/skeptic legs (Grok, no web tools) → synthesis (Grok)."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "55df1fc0-d023-4d67-b20a-ec8357734c93",
+              "path": "/openwiki/workflows/retrieval.md",
+              "title": "Retrieval workflow (Tavily-style results)",
+              "purpose": "How retrieve mode, --retrieve, and --output results|both produce search_results[]: buildRetrieveMessages contract, parseRetrieveContent tolerance, resultsFromSources and mergeRetrieveResults scoring, the optional synthesis pass, and ignored-retrieve warnings.",
+              "seedPaths": [
+                "src/modes.ts",
+                "src/prompts.ts",
+                "src/retrieval.ts",
+                "test/retrieval.test.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/output-and-formatting.md",
+                "/openwiki/architecture/pipeline.md",
+                "/openwiki/concepts/modes-and-routing.md",
+                "/openwiki/concepts/web-search.md"
+              ],
+              "instructions": [
+                "Document runRetrieve: --output both adds a synthesis call whose messages embed the retrieved sources block with web intentionally off, merging sources/usage/warnings.",
+                "Document scoring: model-emitted results keep snippets and their scores; citation-derived entries get empty content; missing scores are derived heuristically from citation order as round((1 - index/count)*1000)/1000 in (0,1].",
+                "Document the retrieve JSON contract the model is told to return: { results:[{title,url,content}], answer } and the parsing tolerance (invalid JSON or non-array → empty results, never throws).",
+                "Note the warning path when --retrieve/--output is requested on deepresearch/multi (modeAllowsWeb false) and how normalizeRetrieveResult sets content/web/searchResults per output style."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "3d30c3c3-c01c-473b-827d-bf3d88c92e6d",
+              "path": "/openwiki/quickstart.md",
+              "title": "Quickstart — navigating the grok-cli wiki",
+              "purpose": "Task-routing map for coding agents: points each kind of change (flags, modes, web behavior, retrieval, multi-agent, X/bookmarks integrations, cost/retries, output JSON, tests) to the right wiki page, and states the generated-wiki maintenance constraints from AGENTS.md and the scheduled OpenWiki workflow.",
+              "seedPaths": [
+                ".github/workflows/openwiki-update.yml",
+                "AGENTS.md",
+                "README.md",
+                "package.json",
+                "src/cli.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture/overview.md",
+                "/openwiki/concepts/modes-and-routing.md",
+                "/openwiki/operations/reliability-and-cost.md",
+                "/openwiki/testing/overview.md"
+              ],
+              "instructions": [
+                "Map tasks to pages: flag/config changes → /openwiki/architecture/cli-and-config.md; mode semantics → /openwiki/concepts/modes-and-routing.md; pipeline behavior → /openwiki/architecture/pipeline.md; web tools → /openwiki/concepts/web-search.md; retrieve/--output → /openwiki/workflows/retrieval.md; multi ensemble → /openwiki/workflows/multi-agent.md; X signal → /openwiki/integrations/x-signal.md; bookmarks → /openwiki/integrations/tweetsmash-bookmarks.md; cost/retries/exit codes → /openwiki/operations/reliability-and-cost.md; output shape → /openwiki/architecture/output-and-formatting.md; validating a change → /openwiki/testing/overview.md.",
+                "This wiki is regenerated by the scheduled .github/workflows/openwiki-update.yml workflow; do not hand-edit generated OpenWiki pages unless explicitly asked — prefer updating source/docs and letting OpenWiki regenerate.",
+                "Treat README.md as the user-facing contract and AGENTS.md as the repo convention; source code and tests are authoritative — wiki uncertainties are verification gaps, not automatic requirements."
+              ],
+              "status": "pending"
+            }
+          ]
+        },
+        {
+          "label": "background-agents · qwen3.8-flash",
+          "source": "/Users/manik/Github/background-agents/openwiki/.run.json",
+          "repo": "open-inspect",
+          "runId": "ede5570f-885c-4f50-a802-c0bf30e2318f",
+          "mode": "init",
+          "phase": "generating",
+          "startedAt": "2026-08-29T03:40:13.435Z",
+          "language": "en",
+          "model": "qwen3.8-flash",
+          "producer": "openwiki/0.4.3",
+          "planningContext": "Explore only package.json, README.md, AGENTS.md, and packages/*/package.json. Then immediately call submit_plan with a small hierarchy including /openwiki/quickstart.md plus 4-6 other pages. Prefer submitting over further exploration.",
+          "deletePages": [],
+          "pages": [
+            {
+              "id": "a4705978-fcbc-48a3-926e-a21b0b7cc9b8",
+              "path": "/openwiki/architecture.md",
+              "title": "System Architecture and Package Boundaries",
+              "purpose": "How the tiers fit together (web client, control plane, data plane, bot workers), which package owns which responsibility, and the build/runtime boundaries an agent must respect when changing code.",
+              "seedPaths": [
+                "AGENTS.md",
+                "README.md",
+                "eslint.config.js",
+                "knip.json",
+                "packages/control-plane/package.json",
+                "packages/github-bot/package.json",
+                "packages/linear-bot/package.json",
+                "packages/opencomputer-infra/package.json",
+                "packages/slack-bot/package.json",
+                "packages/web/package.json"
+              ],
+              "relatedPages": [
+                "/openwiki/concepts/shared-package.md",
+                "/openwiki/operations/deploy-and-config.md",
+                "/openwiki/quickstart.md",
+                "/openwiki/workflows/session-lifecycle.md"
+              ],
+              "instructions": [
+                "Add a mermaid architecture diagram of client → control plane (DO + D1) → data plane sandbox → streaming back, and a second diagram of the package dependency graph. Follow the mermaid-diagrams skill guidance (valid syntax, labels from repo evidence).",
+                "Cover repo-level tooling boundaries: npm workspaces at packages/*, vitest.workspace.ts, eslint.config.js, knip.json, ruff.toml for Python packages, .husky + lint-staged config in package.json.",
+                "Describe the data-plane backends named in README.md packages table: sandbox-runtime, modal-infra, daytona-infra, e2b-infra, opencomputer-infra, and note that only opencomputer-infra has a package.json in this workspace (others are Python/tooling packages).",
+                "Document the three tiers from AGENTS.md: Web client (Next.js on Vercel or Workers via OpenNext), Control plane (Cloudflare Workers + Durable Objects, one DO per session with SQLite storage, D1 for session index/repo metadata/environments/encrypted secrets), Data plane (Modal Python sandboxes running coding agents).",
+                "Explain the bot layer as separate Cloudflare Workers using Hono (slack-bot, github-bot, linear-bot) and how each is built (esbuild bundle to dist/index.js, platform=browser, external cloudflare:*/node:*) — derive from each package.json.",
+                "Include the security model summary from README.md: shared GitHub App installation token brokered to sandboxes via git credential helper, user OAuth token used for PR creation, sandbox auth token and WebSocket token scoped to one session; no per-user repo access validation (single-tenant only).",
+                "State clearly what is NOT enforced today (multi-tenant isolation, per-repo authorization) so a change is not assumed safe."
+              ],
+              "status": "complete"
+            },
+            {
+              "id": "b9d2d1a4-af5c-40aa-9c21-916a406cf1ae",
+              "path": "/openwiki/concepts/shared-package.md",
+              "title": "The Shared Package: Contract Between Services",
+              "purpose": "What @open-inspect/shared exposes (subpath exports for auth, service-auth, models, triggers, git, cron, cache-store, logger, repository identity helpers and type namespaces) and why it must be built first when types change.",
+              "seedPaths": [
+                "AGENTS.md",
+                "packages/control-plane/package.json",
+                "packages/shared/package.json",
+                "packages/slack-bot/package.json",
+                "packages/web/package.json"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture.md",
+                "/openwiki/operations/deploy-and-config.md",
+                "/openwiki/testing/testing-strategy.md",
+                "/openwiki/workflows/session-lifecycle.md"
+              ],
+              "instructions": [
+                "Document the repository identity conventions from AGENTS.md: repo_owner may be a nested namespace containing '/', only repo_name is a single path segment, use shared identity helpers in TS, split on the LAST '/' when an owner/name string is unavoidable, and encode the owner as one API route segment.",
+                "Enumerate the public surface from packages/shared/package.json exports (., /auth, /service-auth, /models, /classification, /logger, /cache-store, /app-name, /http-body, /regex, /user-id, /browser-auth-routes, /session-list-query, /sign-in-provider, /git, /cron, /triggers, plus ./types/* namespaces such as commit-signing, environments, github-identity, github-autofix, image-builds, integrations) and explain which consumer packages rely on each group.",
+                "Explain how to verify a shared change: npm run build -w @open-inspect/shared then npm run typecheck and npm test at the root.",
+                "Explain the file:../shared dependency used by every TS package and the AGENTS.md rule: build @open-inspect/shared first whenever shared types change; root build/typecheck scripts already order this.",
+                "Note the lint-staged/ruff and complexity linter (scripts/lint-complexity.mjs plus scripts/lint-complexity-message.test.mjs) that shape how shared code must be written.",
+                "Summarise the unit/naming conventions from AGENTS.md that shared types propagate: seconds in Python, milliseconds in TS, _MS suffixes, each default defined exactly once as a named constant, no literal values restated in comments."
+              ],
+              "status": "complete"
+            },
+            {
+              "id": "31f725d5-f030-4682-82cb-917fbb242c80",
+              "path": "/openwiki/operations/deploy-and-config.md",
+              "title": "Configuration, Terraform, and Deployment",
+              "purpose": "How services are configured and deployed: Terraform-generated Worker config, D1 migrations, web platform choice, Modal deploys, CI/CD triggers, and the known deployment gotchas that break runs.",
+              "seedPaths": [
+                ".github/",
+                ".husky/",
+                "AGENTS.md",
+                "README.md",
+                "docs/GETTING_STARTED.md",
+                "docs/SETUP_GUIDE.md",
+                "package.json",
+                "terraform/"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture.md",
+                "/openwiki/quickstart.md",
+                "/openwiki/testing/testing-strategy.md",
+                "/openwiki/workflows/session-lifecycle.md"
+              ],
+              "instructions": [
+                "Cover Modal data-plane operational rules: build sandbox image before deploy, never deploy src/app.py directly, CACHE_BUSTER in src/images/base.py for forced rebuilds, and npm run build:opencomputer-template at the root.",
+                "Document Durable Object binding two-phase deploys (first enable_durable_object_bindings = false, then true) and GitHub App private keys needing PKCS#8 (openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt).",
+                "Document web platform choice: web_platform = \"cloudflare\" deploys via OpenNext to Workers instead of Vercel; NEXT_PUBLIC_WS_URL must be present at build time because Next.js inlines NEXT_PUBLIC_* into the client bundle; Vercel credentials are unnecessary dummy values on Cloudflare.",
+                "Establish that control-plane Worker config is generated by Terraform and no wrangler.toml is checked in, and inspect terraform/ to document the stacks, variables, and D1 migration directory layout (terraform/d1/migrations/) referenced by AGENTS.md.",
+                "Include rollback/verification guidance: which commands prove a change built cleanly before deploy (shared build, typecheck, test) and how migrations are applied.",
+                "Inventory required environment/secrets surface as documented (GitHub App, D1, secrets encryption, ALLOWED_GITHUB_ORGS, provider account keys) using provider-accounts.md and docs/ as pointers; do not reproduce secret values.",
+                "Summarise CI/CD triggers from AGENTS.md: Terraform deploys control plane + D1 migrations + web (when cloudflare) on terraform/ and packages/*/ changes; Vercel deploys web for packages/web and packages/shared; Modal deploys the data plane for packages/modal-infra via Terraform apply; CI runs lint, typecheck and tests for TS and Python on every push/PR.",
+                "Use a mermaid diagram for the deploy pipeline (source change → CI → Terraform/Modal/Vercel) when the workflow is documented; follow the mermaid-diagrams skill."
+              ],
+              "status": "complete"
+            },
+            {
+              "id": "e1e53714-bee6-4301-a750-01578cc3e6d3",
+              "path": "/openwiki/testing/testing-strategy.md",
+              "title": "Testing and Validation Strategy",
+              "purpose": "Where tests live per package, how to run the narrowest meaningful validation, and how the control-plane integration harness with workerd + real D1 actually behaves.",
+              "seedPaths": [
+                "AGENTS.md",
+                "package.json",
+                "packages/control-plane/package.json",
+                "packages/github-bot/package.json",
+                "packages/linear-bot/package.json",
+                "packages/slack-bot/package.json",
+                "packages/web/package.json",
+                "scripts/lint-complexity-message.test.mjs",
+                "vitest.workspace.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture.md",
+                "/openwiki/concepts/shared-package.md",
+                "/openwiki/operations/deploy-and-config.md",
+                "/openwiki/quickstart.md",
+                "/openwiki/workflows/session-lifecycle.md"
+              ],
+              "instructions": [
+                "Add guidance on testing changes that cross package boundaries: rebuild shared first, then run dependents' typecheck/tests, because imports resolve against dist/.",
+                "Explain integration harness invariants: one shared D1 instance across tests, cleanD1Tables() (or equivalent) in beforeEach/afterEach to avoid cross-test pollution, migrations from terraform/d1/migrations applied via test/integration/apply-migrations.ts, and helpers initSession(), queryDO(), seedEvents() in test/integration/helpers.ts.",
+                "Give the command ladder from package.json/vitest.workspace.ts: npm test -w <pkg>, npm run test:integration -w @open-inspect/control-plane, npm run test:coverage, npm run typecheck, npm run lint / lint:fix / lint:complexity, npm run test:lint-complexity, npm run knip, and cd packages/modal-infra && pytest tests/ -v plus ruff check --fix && ruff format.",
+                "Map test locations exactly as AGENTS.md states: control-plane unit co-located src/**/*.test.ts (Node env); control-plane integration in test/integration/*.test.ts running in workerd via @cloudflare/vitest-pool-workers with real D1 bindings (separate vitest.integration.config.ts); web/slack-bot/linear-bot co-located src/**/*.test.ts; github-bot in test/*.test.ts; modal-infra in tests/test_*.py with pytest + pytest-asyncio.",
+                "Note the three tsconfig typecheck passes for control-plane (src, tsconfig.test.json, test/integration) and the Next.js typegen step required for web typecheck.",
+                "State the AGENTS.md validation philosophy: treat source and tests as authoritative, prefer the narrowest quiet validation that proves the changed behavior, and preserve complete failure output."
+              ],
+              "status": "complete"
+            },
+            {
+              "id": "6c6a79ac-db6d-4f42-aaf6-450808ae100b",
+              "path": "/openwiki/workflows/integrations-and-triggers.md",
+              "title": "Client Integrations and Automations",
+              "purpose": "Non-web entry points into a session — Slack, GitHub, Linear, inbound webhooks, and scheduled/event automations — including how each bot worker authenticates and hands work to the control plane.",
+              "seedPaths": [
+                "AGENTS.md",
+                "docs/AUTOMATIONS.md",
+                "docs/integrations/GITHUB.md",
+                "docs/integrations/LINEAR.md",
+                "docs/integrations/SLACK.md",
+                "packages/github-bot/package.json",
+                "packages/linear-bot/package.json",
+                "packages/slack-bot/package.json"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture.md",
+                "/openwiki/concepts/shared-package.md",
+                "/openwiki/operations/deploy-and-config.md",
+                "/openwiki/workflows/session-lifecycle.md"
+              ],
+              "instructions": [
+                "Add a mermaid flow diagram showing how each entry point converges on the same control-plane session creation path; follow the mermaid-diagrams skill.",
+                "Automations from README.md/docs/AUTOMATIONS.md: cron (hourly/daily/weekly/monthly/custom 5-field with timezone), Sentry alert triage, GitHub workflow-run triggers with name/conclusion filters, inbound webhooks with JSONPath condition gates, multi-repo fan-out up to 10 repos, auto-pause after 3 consecutive failures, manual trigger, run history.",
+                "Describe each bot worker as a Cloudflare Worker built with Hono + zod, bundling src/index.ts via esbuild, and consuming @open-inspect/shared for auth/types (per each package.json).",
+                "Explain shared auth plumbing used by bots (shared ./auth, ./service-auth, ./browser-auth-routes, ./triggers, ./cron exports) and note the PKCS#8 requirement for GitHub App private keys on Cloudflare Workers.",
+                "GitHub: PR review on PR open, @mention commands in PR comments, per-repo configuration, and PR creation using the prompting user's OAuth token with fallback to the shared GitHub App bot — verify against packages/github-bot (tests live in test/*.test.ts) and docs/integrations/GITHUB.md.",
+                "Linear: agent webhook → coding session, progress activities, PR linking — verify against packages/linear-bot and docs/integrations/LINEAR.md.",
+                "Slack: sessions from @mention/DM, PNG/JPEG/WebP/GIF prompt attachments, threaded replies, per-user model and branch preferences via App Home — verify details against packages/slack-bot and docs/integrations/SLACK.md."
+              ],
+              "status": "complete"
+            },
+            {
+              "id": "e917d41c-93ba-4fea-97ef-d3e2d885fcad",
+              "path": "/openwiki/workflows/session-lifecycle.md",
+              "title": "Session Lifecycle: Prompt to Sandbox and Back",
+              "purpose": "The core end-to-end flow — creating a session, WebSocket streaming between control plane and sandbox, snapshots/prebuilt images/warming, multiplayer, child sessions, secrets and git credentials — and the invariants that make it safe to change.",
+              "seedPaths": [
+                "AGENTS.md",
+                "README.md",
+                "docs/HOW_IT_WORKS.md",
+                "packages/control-plane/README.md",
+                "packages/control-plane/package.json",
+                "packages/modal-infra/README.md"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture.md",
+                "/openwiki/concepts/shared-package.md",
+                "/openwiki/operations/deploy-and-config.md",
+                "/openwiki/testing/testing-strategy.md",
+                "/openwiki/workflows/integrations-and-triggers.md"
+              ],
+              "instructions": [
+                "Add mermaid sequence and state diagrams for the prompt→sandbox→stream path and the session/sandbox lifecycle (fresh vs prebuilt image vs snapshot restore, timeouts, failure handling); follow the mermaid-diagrams skill.",
+                "Cover child sessions (spawn-child, send-child-prompt, get-child-status, cancel-child, depth limits and per-repo guardrails) and port tunneling (up to 10 ports, URLs in /workspace/.tunnels.env before .openinspect/start.sh runs).",
+                "Cover modal-infra deployment invariants from AGENTS.md: never deploy src/app.py directly; run uv run python deploy.py --build-sandbox-image before uv run modal deploy deploy.py (or -m src); bump CACHE_BUSTER in src/images/base.py to force an image rebuild.",
+                "Cover multi-repo sessions and environments: up to 10 repos per session, saved environments with their own secrets scope and optional prebuilds; secrets are AES-256-GCM encrypted and scoped globally/per-repo/per-environment, injected as env vars at spawn.",
+                "Cover multiplayer presence, per-prompt commit attribution (configureGitIdentity with author.scmName/scmEmail) and the fallback to the shared GitHub App bot when a user has no SCM token.",
+                "Cover startup performance layers from README.md: filesystem snapshots after each prompt, per-repo and per-environment pre-built images rebuilt every 30 minutes (docs/IMAGE_PREBUILD.md), and proactive warming while the user types.",
+                "Document repository lifecycle scripts and their failure semantics from README.md: .openinspect/setup.sh (fatal in image build mode, non-fatal for fresh sessions, skipped for prebuilt/snapshot-restore) vs .openinspect/start.sh (runs on every non-build start, strict failure), defaults SETUP_TIMEOUT_SECONDS=300 and START_TIMEOUT_SECONDS=120, and OPENINSPECT_BOOT_MODE values build|fresh|repo_image|snapshot_restore.",
+                "Mark unknowns explicitly rather than guessing file locations, since this page's seeds are docs-level pointers.",
+                "Trace the canonical flow stated in AGENTS.md: user prompt → web client → control-plane Durable Object (WebSocket) → Modal sandbox → streaming events back along the same WebSocket chain; identify the concrete handler/DO/sandbox classes by reading the packages named in docs/HOW_IT_WORKS.md and packages/control-plane/README.md."
+              ],
+              "status": "pending"
+            },
+            {
+              "id": "f811250d-6ab6-4679-917a-a06419c19e3d",
+              "path": "/openwiki/quickstart.md",
+              "title": "Quickstart — Finding Your Way in Open-Inspect",
+              "purpose": "Entry point and task-routing map: what Open-Inspect is (single-tenant background coding agent), the three-tier stack, which package owns which change, and where in the wiki to go for each kind of task.",
+              "seedPaths": [
+                "AGENTS.md",
+                "README.md",
+                "docs/GETTING_STARTED.md",
+                "docs/HOW_IT_WORKS.md",
+                "docs/SETUP_GUIDE.md",
+                "package.json",
+                "vitest.workspace.ts"
+              ],
+              "relatedPages": [
+                "/openwiki/architecture.md",
+                "/openwiki/concepts/shared-package.md",
+                "/openwiki/operations/deploy-and-config.md",
+                "/openwiki/testing/testing-strategy.md",
+                "/openwiki/workflows/session-lifecycle.md"
+              ],
+              "instructions": [
+                "Add a task-routing map linking to /openwiki/architecture.md, /openwiki/concepts/shared-package.md, /openwiki/workflows/session-lifecycle.md, /openwiki/workflows/integrations-and-triggers.md, /openwiki/operations/deploy-and-config.md, /openwiki/testing/testing-strategy.md.",
+                "Call out the two highest-value constraints up front: build @open-inspect/shared before dependents, and repo owners may be nested namespaces (may contain '/').",
+                "Do not list generated folder index pages as links; only link planned pages.",
+                "Give a package table generated from packages/*/package.json (name, framework, build/test/typecheck scripts) and the dependency graph from AGENTS.md: @open-inspect/shared ← control-plane, web, slack-bot, github-bot, linear-bot.",
+                "List the root workspace commands from package.json scripts (build, typecheck, lint, lint:fix, format, test, test:integration, test:coverage, knip, build:opencomputer-template) and note Node >= 22 engines.",
+                "Present Open-Inspect as a single-tenant background coding agent system: Cloudflare Workers control plane (Durable Objects + D1), Modal/Python data plane, Next.js web client, plus Hono bot workers — state this from README.md/AGENTS.md rather than inventing."
+              ],
+              "status": "pending"
+            }
+          ]
+        }
+      ]
+    </script>
+    <script type="module">
+      import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
 
-    <div class="sec-head" id="s2"><span class="sec-num">02</span><h2>How the model planned</h2></div>
-    <div class="ve-card" id="howCard"></div>
-    <div class="callout" id="planningContext"></div>
+      const EMBEDDED = JSON.parse(
+        document.getElementById("runs-data").textContent,
+      );
+      const $ = (id) => document.getElementById(id);
+      const esc = (s) =>
+        String(s ?? "").replace(
+          /[&<>"']/g,
+          (c) =>
+            ({
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            })[c],
+        );
+      const folderOf = (path) => {
+        const i = path.lastIndexOf("/");
+        return i <= 0 ? "/openwiki" : path.slice(0, i);
+      };
+      const shortName = (path) =>
+        path.replace(/^\/openwiki\//, "").replace(/\.md$/, "");
+      const counts = (pages) =>
+        pages.reduce((a, p) => {
+          a[p.status] = (a[p.status] || 0) + 1;
+          return a;
+        }, {});
 
-    <div class="sec-head" id="s3"><span class="sec-num">03</span><h2>Information architecture</h2></div>
-    <div class="folder-grid" id="folders"></div>
+      function slimFromRunJson(data, source) {
+        const plan = data.plan || {};
+        const pages = (plan.pages || []).map((p) => ({
+          id: p.id,
+          path: p.path,
+          title: p.title,
+          purpose: p.purpose,
+          seedPaths: p.seedPaths || [],
+          relatedPages: p.relatedPages || [],
+          instructions: p.instructions || [],
+          status: p.status || "pending",
+        }));
+        return {
+          label: source || "loaded .run.json",
+          source: source || "file",
+          repo: "",
+          runId: data.runId,
+          mode: data.mode,
+          phase: data.phase,
+          startedAt: data.startedAt,
+          language: data.language,
+          model: data.actor?.metadataModel,
+          producer: data.actor?.producerActor,
+          planningContext: data.planningContext || null,
+          deletePages: plan.deletePages || [],
+          pages,
+        };
+      }
 
-    <div class="sec-head" id="s4"><span class="sec-num">04</span><h2>Navigation graph</h2></div>
-    <p class="diagram-shell__hint">A cell is marked when the planner linked at least one page in that row-folder to a page in that column-folder via <code>relatedPages</code>.</p>
-    <div class="table-wrap ve-card" id="graphTable"></div>
+      let runs = EMBEDDED.slice();
+      let current = runs[0] || null;
+      let folderFilter = "all";
+      let mermaidReady = false;
+      let mermaidInited = false;
+      let renderGraph = () => {};
 
-    <div class="sec-head" id="s5"><span class="sec-num">05</span><h2>Page briefs</h2></div>
-    <div class="filters" id="filters"></div>
-    <div id="pages"></div>
-  </div>
-</div>
+      function fillSelect() {
+        const sel = $("runSelect");
+        sel.innerHTML = runs
+          .map(
+            (r, i) =>
+              `<option value="${i}">${esc(r.label)} · ${r.pages.length} pages · ${esc(r.phase || "")}</option>`,
+          )
+          .join("");
+      }
 
-<script type="application/json" id="runs-data">[{"label": "grok-cli · deepseek-v4-flash", "source": "/tmp/openwiki-runs/grok-cli/deepseek-v4-flash/openwiki/.run.json", "repo": "grok-cli", "runId": "531068e7-ab04-4ef9-aa57-6a6164701a49", "mode": "init", "phase": "generating", "startedAt": "2026-08-29T08:01:17.972Z", "language": "en", "model": "deepseek-v4-flash", "producer": "openwiki/0.4.3", "planningContext": null, "deletePages": [], "pages": [{"id": "4394fedc-10a0-494d-9b31-49abe1d2c7a8", "path": "/openwiki/architecture/cli-and-config.md", "title": "CLI surface, config & precedence", "purpose": "How flags are parsed in src/args.ts (positional mode token, flag families, -- terminator, validation), how ~/.config/grok-cli/config.json merges over defaults in src/config.ts + src/defaults.ts, env keys (OPENROUTER_API_KEY), and the quality/economy model alias tables.", "seedPaths": ["README.md", "src/args.ts", "src/config.ts", "src/defaults.ts", "src/types.ts", "test/args.test.ts", "test/config.test.ts"], "relatedPages": ["/openwiki/architecture/overview.md", "/openwiki/architecture/pipeline.md", "/openwiki/concepts/modes-and-routing.md", "/openwiki/concepts/web-search.md"], "instructions": ["Catalog the flag families: mode, output (--report/--raw/--output/--retrieve), web (--no-web/--web-fetch/--web-engine/--web-max-results/--web-max-total-results/--web-allowed-domains/--web-blocked-domains/--web-provider), x, bookmarks, profile (--economy), json/schema, --max-cost.", "Document parseArgs rules exactly: a mode is only recognized as the first non-flag token; everything after -- is the prompt; unknown - flags error; -h/--help throws HelpRequested which cli.ts catches and prints HELP_TEXT with exit 0; missing prompt errors.", "Include the quality vs economy model alias tables from src/defaults.ts and where resolveModel consumes them.", "Record config precedence: CLI overrides config file overrides defaults; OPENROUTER_API_KEY env overrides file apiKey; resolveCliOptions applies defaultMode/defaultProfile only when not explicit."], "status": "skipped"}, {"id": "7622f1b0-f65b-4724-a24f-3b8993bf7254", "path": "/openwiki/architecture/openrouter-client.md", "title": "OpenRouter client (requests, retries, sources, usage)", "purpose": "The chat.completions wrapper in src/openrouter.ts and usage/cost bookkeeping in src/cost.ts: request body and tool construction, 3-attempt retry with backoff and Retry-After, status-to-error mapping, source extraction from citations/annotations, and usage/cost aggregation.", "seedPaths": ["src/cost.ts", "src/openrouter.ts", "src/types.ts", "test/cost.test.ts", "test/openrouter.test.ts"], "relatedPages": ["/openwiki/architecture/output-and-formatting.md", "/openwiki/architecture/pipeline.md", "/openwiki/concepts/web-search.md", "/openwiki/operations/reliability-and-cost.md"], "instructions": ["Do not combine response_format json_object with OpenRouter server tools (observed garbage JSON like -1.5e-05); the client gates response_format on json && modelSupportsJsonObjectResponseFormat && no tools, and the two-pass pattern lives in /openwiki/architecture/pipeline.md.", "Document extractSources (citations array plus message annotations url_citation, deduped by URL, title merged in) and cost.ts aggregation (addUsageCall, mergeUsage, costUsd only when every call reports a cost, server_tool_use summed).", "Document mapOpenRouterError branches: 401/403 auth, 402 credits/quota, 404 or tool-use text when tools requested (model lacks server-tool support), 404/model/endpoint text (model unavailable), 429/>=500 provider error, generic fallback.", "Document retry behavior: retryable = 429 or >=500 or fetch TypeError, 3 attempts max, backoff 2^attempt*1000ms with Retry-After (seconds) winning when larger; invalid response JSON surfaces OpenRouterError."], "status": "complete"}, {"id": "a0b1dc82-5f25-4512-90a7-107e53bfdba3", "path": "/openwiki/architecture/output-and-formatting.md", "title": "Result model & output formatting", "purpose": "The PipelineResult contract in src/types.ts and its rendering in src/formatters.ts: decision brief/report/raw/retrieve markdown and the --json payload, footer with cost/models/tool usage, stderr warnings/progress/hint, and parseDecisionAnswer in modes.ts.", "seedPaths": ["README.md", "src/formatters.ts", "src/modes.ts", "src/retrieval.ts", "src/types.ts", "test/formatters.test.ts"], "relatedPages": ["/openwiki/architecture/overview.md", "/openwiki/architecture/pipeline.md", "/openwiki/concepts/web-search.md", "/openwiki/operations/reliability-and-cost.md", "/openwiki/workflows/retrieval.md"], "instructions": ["Document every PipelineResult field and when optional fields populate: answer (only --json brief parse), searchResults (retrieve/--retrieve/--output), schemaResult (--schema), xSignal (--x), bookmarks (--bookmarks).", "Document parseDecisionAnswer tolerances: non-JSON or non-object content and empty decision objects become warnings with answer omitted, never thrown.", "Document the footer line (Cost/Models/Tokens/Web searches) and the X report appendix (reportPath appended unless already in content).", "Map invocation → stdout shape: default brief, --report, --raw, --json payload keys (mode, web, profile, output_format, answer, content, sources, warnings, usage), retrieve/--output results markdown, --schema pretty JSON (schema_result in --json); formatError emits JSON {error:{message}} on stderr when --json."], "status": "complete"}, {"id": "dd272814-5454-4830-91b9-837b266a107a", "path": "/openwiki/architecture/overview.md", "title": "System overview & runtime domains", "purpose": "High-level map of the CLI: entrypoint → args/config resolution → runMode pipeline → OpenRouter client → formatters → stdout/stderr; module-to-responsibility table; the runtime domains (CLI surface, pipeline, provider client, result model, integrations) and where each domain's pages live.", "seedPaths": ["docs/specs/2026-05-19-grok-cli-design.md", "package.json", "src/cli.ts", "src/formatters.ts", "src/modes.ts", "src/openrouter.ts", "src/types.ts"], "relatedPages": ["/openwiki/architecture/cli-and-config.md", "/openwiki/architecture/openrouter-client.md", "/openwiki/architecture/output-and-formatting.md", "/openwiki/architecture/pipeline.md", "/openwiki/concepts/modes-and-routing.md", "/openwiki/testing/overview.md"], "instructions": ["Cross-link the domain pages: cli-and-config, pipeline, openrouter-client, output-and-formatting, concepts/modes-and-routing, and the integration/workflow pages.", "Record the exit-code contract (0 success, 1 error) and the stdout/stderr split, including the web-enabled hint line and progress lines routed to stderr.", "Summarize each src/*.ts module's responsibility in a table; note src/cli.ts is the only entrypoint (package.json bin maps grok-research to dist/cli.js built from src/cli.ts).", "Use a mermaid sequence diagram for the request lifecycle: cli.ts main → parseArgs → loadConfig → resolveCliOptions/canonicalizeMode → resolveWebOptions/validateWebOptions/assertWebToolsCompatible → runMode (withBudget wrapper) → callOpenRouter → format* → stdout (or JSON error on stderr, exit 1)."], "status": "complete"}, {"id": "c75b6d60-2973-418b-8f58-885a3323fbe6", "path": "/openwiki/architecture/pipeline.md", "title": "Pipeline orchestration (runMode)", "purpose": "How src/modes.ts drives every research run: the withBudget wrapper and MaxCostExceededError, dispatch order (schema → multi → retrieve → deepresearch → single Grok call), two-pass --json + web and --schema + web, X/bookmark attachment and prompt injection, result normalization and parseDecisionAnswer.", "seedPaths": ["src/modes.ts", "src/prompts.ts", "test/modes.test.ts"], "relatedPages": ["/openwiki/architecture/openrouter-client.md", "/openwiki/concepts/modes-and-routing.md", "/openwiki/concepts/web-search.md", "/openwiki/operations/reliability-and-cost.md", "/openwiki/workflows/multi-agent.md", "/openwiki/workflows/retrieval.md"], "instructions": ["Document short-circuits: --x-only and --bookmarks-only return early with empty usage; --x-only + --bookmarks-only conflicts; normalizeResult/normalizeRetrieveResult/normalizeSchemaResult fill mode/profile/outputFormat/web and answer/schemaResult/searchResults fields; warnings are deduped and propagated.", "Explain the two-pass invariant for --json and --schema with web enabled (research pass with tools, then a tool-less format pass) and why (json_object cannot combine with OpenRouter server tools).", "Explain withBudget semantics: cumulative costUsd accumulation, pre-check and post-check, MaxCostExceededError thrown immediately, and that multi analysis legs run sequentially when maxCost is set but otherwise in parallel.", "Use a mermaid flowchart for the runMode dispatch order, showing each branch and its call count (single Grok 1 call; --json+web and --schema+web two-pass 2 calls; multi 5 calls; deepresearch 1 Sonar call; retrieve 1 call or 2 with --output both)."], "status": "pending"}, {"id": "a0bf163c-631b-4ab4-87a1-e5de6d7e5505", "path": "/openwiki/concepts/modes-and-routing.md", "title": "Modes, model routing & web compatibility", "purpose": "The decision matrix behind which pipeline runs for each mode: models used, call counts, web grounding behavior, canonicalizeMode (research→deepresearch), modeAllowsWeb, modelSupportsServerTools assertion, and profile (quality/economy) resolution.", "seedPaths": ["README.md", "src/config.ts", "src/defaults.ts", "src/types.ts", "test/config.test.ts", "test/modes.test.ts"], "relatedPages": ["/openwiki/architecture/cli-and-config.md", "/openwiki/architecture/pipeline.md", "/openwiki/concepts/web-search.md", "/openwiki/workflows/multi-agent.md", "/openwiki/workflows/retrieval.md"], "instructions": ["Document quality vs economy profile alias tables and where resolveModel/resolveWebModel pick aliases (auto→expert alias, fast→fast alias).", "Explain canonicalizeMode deprecation warning, assertWebToolsCompatible (perplexity/* models cannot use server tools → error suggesting Grok alias or --no-web), and resolveWebOptions precedence (CLI --no-web > config web.search.enabled; retrieve forces search on).", "Explain modeAllowsWeb (auto/fast/expert/retrieve only) and that deepresearch/multi/research never enable OpenRouter web tools even with flags; --retrieve/--output on those modes is ignored with a warning.", "Produce a mode table from README and config.ts: auto/fast/expert (1 Grok call, web on by default), deepresearch (1 Sonar call, no web tools), research (deprecated alias for deepresearch), multi (Sonar + 3 Grok roles + synthesis, web off on legs), retrieve (web forced on)."], "status": "pending"}, {"id": "405b8342-b11b-408e-921c-c1b1206e7742", "path": "/openwiki/concepts/web-search.md", "title": "Web search & OpenRouter server tools", "purpose": "How web_search/web_fetch server tools behave and get configured: resolveWebOptions and validateWebOptions, buildTools parameter mapping (excluded_domains vs blocked_domains), engine/max-results defaults, token/cost overhead, and why two-pass JSON is required.", "seedPaths": ["README.md", "src/config.ts", "src/defaults.ts", "src/openrouter.ts", "test/config.test.ts", "test/openrouter.test.ts"], "relatedPages": ["/openwiki/architecture/openrouter-client.md", "/openwiki/architecture/pipeline.md", "/openwiki/concepts/modes-and-routing.md", "/openwiki/workflows/retrieval.md"], "instructions": ["Document buildTools: openrouter:web_search maps blockedDomains to excluded_domains while web_fetch keeps blocked_domains; engine omitted when auto; max_results/max_total_results/max_content_tokens defaults from DEFAULT_WEB_CONFIG.", "Document resolveWebOptions: search gated on modeAllowsWeb, --no-web disables, retrieve forces search on, fetchEnabled requires searchEnabled (config fetch.enabled or --web-fetch); validateWebOptions errors for allowed+blocked conflict and --web-fetch without search.", "Record cost notes from README: ~1.8k prompt-token overhead even with zero searches, searches inject context raising cost, engines like Exa/Parallel may bill separately, --web is deprecated no-op.", "Restate the incompatibility invariant: json_object response_format must not be combined with server tools; two-pass handled in /openwiki/architecture/pipeline.md."], "status": "pending"}, {"id": "b279b103-003c-4eed-ba50-f97f8eeba262", "path": "/openwiki/integrations/tweetsmash-bookmarks.md", "title": "TweetSmash bookmarks integration", "purpose": "How --bookmarks/--bookmarks-only|related|limit|author|tag works: TweetSmash REST GET /v1/bookmarks, env key candidates, keyword+semantic query, the related authors/tags/terms pass, skip semantics, markdown formatting, and injection into prompts.", "seedPaths": ["src/bookmarks.ts", "src/modes.ts", "test/bookmarks.test.ts"], "relatedPages": ["/openwiki/architecture/output-and-formatting.md", "/openwiki/architecture/pipeline.md", "/openwiki/integrations/x-signal.md", "/openwiki/quickstart.md"], "instructions": ["Document the five env key candidates (TWEETSMASH_API_KEY, TWEETSMASH_KEY, TWEETSMASH, TWEETSMASH_TOKEN) and the three skip reasons surfaced as warnings (no-api-key, empty-query, request failure captured via fetchBookmarkSignal catch).", "Document the related pass: relatedTerms derives authors/tags/query words (max 6), each re-queried and routed as via author|tag|term, deduped by postId, relatedLimit clamped to 10; formatBookmarksMarkdown output is injected via withContext.", "Document the request: GET https://api.tweetsmash.com/v1/bookmarks with q + vector_search_term, limit clamped 1..20 (default 8), author/tag filters, 12s timeout abort, and error mapping (429 rate limit, 401/403 auth, HTTP body preview).", "Note --bookmarks-only builds a Saved Bookmarks Brief result with empty usage and no OpenRouter calls; --bookmarks + --x-only conflict is rejected in runMode."], "status": "pending"}, {"id": "17980fa0-5e84-4110-b551-0e4aea56f90c", "path": "/openwiki/integrations/x-signal.md", "title": "X/Twitter signal via Grok agent (/whathappened)", "purpose": "How --x/--x-only/--x-network|--x-timeout|--x-max-turns work: headless grok spawn, buildWhathappenedPrompt, marker block extraction, report path parsing, the nested --x guard, binary resolution, timeout handling, and prompt injection of the signal.", "seedPaths": ["README.md", "src/modes.ts", "src/x-signal.ts", "test/x-signal.test.ts"], "relatedPages": ["/openwiki/architecture/output-and-formatting.md", "/openwiki/architecture/pipeline.md", "/openwiki/integrations/tweetsmash-bookmarks.md", "/openwiki/workflows/multi-agent.md"], "instructions": ["Do not nest --x: env GROK_RESEARCH_X_ACTIVE=1 guard throws XSignalError telling in-session /whathappened use; the child spawn sets that env so nested grok-research --x fails loudly.", "Document binary resolution (GROK_BIN, then ~/.grok/bin/grok, /usr/local/bin/grok, /opt/homebrew/bin/grok, then PATH 'grok') and the --x-only result shape (buildXOnlyResult with empty usage, sources, warnings).", "Document parsing fallbacks: last JSON object candidate preferred, stderr fallback when stdout empty, marker block missing → full text with a warning, report path via labeled/free-text HTML regexes; timeout kills SIGTERM then SIGKILL after 2s.", "Use a mermaid flow diagram for the spawn → parse → inject path: fetchXSignal → runProcess (grok -p --always-approve --output-format json --max-turns) → parseGrokHeadlessJson → parseXSignalText → xMarkdown into prompts via withContext."], "status": "pending"}, {"id": "b9ce282c-7a38-4493-a7d5-b56da889cfca", "path": "/openwiki/operations/reliability-and-cost.md", "title": "Reliability, cost control & running the CLI", "purpose": "Operational behavior: retry/backoff/Retry-After, --max-cost budget enforcement and unknown-cost warning, stderr progress gating and hint/warnings, exit codes, dev commands (pnpm build/dev/test/typecheck), and the scheduled OpenWiki update workflow.", "seedPaths": [".github/workflows/openwiki-update.yml", "docs/plans/2026-05-20-reliability-hardening.md", "package.json", "src/args.ts", "src/cli.ts", "src/modes.ts", "src/openrouter.ts"], "relatedPages": ["/openwiki/architecture/openrouter-client.md", "/openwiki/architecture/pipeline.md", "/openwiki/quickstart.md", "/openwiki/testing/overview.md"], "instructions": ["Document stderr output contract: web-enabled hint line, Step N/M progress gated on !options.json, warnings for deprecated flags (--web, research mode) and ignored flags; --json keeps stderr clean except JSON errors.", "Document the exit-code contract (0 success, 1 error via process.exitCode) and dev workflow from package.json (pnpm dev/grok-research for checkout runs, pnpm build via tsup, pnpm test, pnpm typecheck).", "Reference docs/plans/2026-05-20-reliability-hardening.md as the canonical record of retry/max-cost/progress features and note the scheduled openwiki-update.yml workflow regenerates openwiki/ (full history fetch, creates openwiki/update PR).", "Summarize retry behavior (3 attempts, 429/>=500/fetch-TypeError, backoff 2^attempt*1000ms, Retry-After wins) and the --max-cost pre/post checks with MaxCostExceededError; cli.ts warns when costUsd is unknown so the limit was not enforced."], "status": "pending"}, {"id": "da2f2b9d-7a80-410b-b659-d24e257dfb40", "path": "/openwiki/testing/overview.md", "title": "Testing strategy & validation invariants", "purpose": "How the Vitest suite is organized per module and what invariants it pins (web tools per model, two-pass dispatch, budget abort sequencing, JSON tolerances, exit-code contract), plus the mock patterns used and guidance for validating changes narrowly.", "seedPaths": ["AGENTS.md", "package.json", "test/args.test.ts", "test/bookmarks.test.ts", "test/cli.test.ts", "test/modes.test.ts", "test/openrouter.test.ts", "test/retrieval.test.ts", "test/x-signal.test.ts"], "relatedPages": ["/openwiki/architecture/overview.md", "/openwiki/architecture/pipeline.md", "/openwiki/operations/reliability-and-cost.md", "/openwiki/quickstart.md"], "instructions": ["Document the injection patterns: ModeCaller fake results for runMode tests, fetchImpl for bookmarks/openrouter, spawnImpl for x-signal, real spawnSync only in cli.test.ts.", "Map each test file to its module and the invariants it pins: args (parse shapes, validation errors), config (web resolution, compatibility), modes (dispatch counts, two-pass, budget sequencing under --max-cost, parseDecisionAnswer), openrouter (tools mapping, retries, error mapping), retrieval (parse tolerance, scoring/merge), x-signal (prompt markers, parsing), bookmarks (key lookup, mapping, related terms), cli (spawnSync e2e for --json error contract).", "Note runtime is Node >=20 and tests run via vitest (pnpm test).", "Per AGENTS.md: prefer the narrowest quiet validation that proves the changed behavior, preserve complete failure output; typecheck strictness matters (tsc --noEmit, exactOptionalPropertyTypes)."], "status": "pending"}, {"id": "fa686a4d-720c-4947-993e-3cad5d90c2a9", "path": "/openwiki/workflows/multi-agent.md", "title": "Multi-agent ensemble workflow", "purpose": "How multi mode runs: Sonar research pass → three Grok role analyses (engineering/product/skeptic) → synthesis; parallel vs sequential dispatch under --max-cost; budget-abort and role-failure semantics; usage/source/warning merging.", "seedPaths": ["README.md", "src/modes.ts", "src/prompts.ts", "test/modes.test.ts"], "relatedPages": ["/openwiki/architecture/pipeline.md", "/openwiki/concepts/modes-and-routing.md", "/openwiki/integrations/x-signal.md", "/openwiki/operations/reliability-and-cost.md"], "instructions": ["Document dispatch: legs run via Promise.allSettled by default; with --max-cost they run sequentially (runSequential) so the budget pre-check stops dispatch the moment the cap is crossed.", "Document failure semantics: MaxCostExceededError in any leg is rethrown (fatal, synthesis skipped); per-role failures become warning lines; if all roles fail the mode throws.", "Document merging in runMulti: sources from research+synthesis, warnings from research+roles+synthesis, usage from all calls via mergeUsage, mode/profile/outputFormat stamped in normalizeResult.", "Use a mermaid sequence diagram for the 5-call flow: research (Sonar, no web) → engineering/product/skeptic legs (Grok, no web tools) → synthesis (Grok)."], "status": "pending"}, {"id": "55df1fc0-d023-4d67-b20a-ec8357734c93", "path": "/openwiki/workflows/retrieval.md", "title": "Retrieval workflow (Tavily-style results)", "purpose": "How retrieve mode, --retrieve, and --output results|both produce search_results[]: buildRetrieveMessages contract, parseRetrieveContent tolerance, resultsFromSources and mergeRetrieveResults scoring, the optional synthesis pass, and ignored-retrieve warnings.", "seedPaths": ["src/modes.ts", "src/prompts.ts", "src/retrieval.ts", "test/retrieval.test.ts"], "relatedPages": ["/openwiki/architecture/output-and-formatting.md", "/openwiki/architecture/pipeline.md", "/openwiki/concepts/modes-and-routing.md", "/openwiki/concepts/web-search.md"], "instructions": ["Document runRetrieve: --output both adds a synthesis call whose messages embed the retrieved sources block with web intentionally off, merging sources/usage/warnings.", "Document scoring: model-emitted results keep snippets and their scores; citation-derived entries get empty content; missing scores are derived heuristically from citation order as round((1 - index/count)*1000)/1000 in (0,1].", "Document the retrieve JSON contract the model is told to return: { results:[{title,url,content}], answer } and the parsing tolerance (invalid JSON or non-array → empty results, never throws).", "Note the warning path when --retrieve/--output is requested on deepresearch/multi (modeAllowsWeb false) and how normalizeRetrieveResult sets content/web/searchResults per output style."], "status": "pending"}, {"id": "3d30c3c3-c01c-473b-827d-bf3d88c92e6d", "path": "/openwiki/quickstart.md", "title": "Quickstart — navigating the grok-cli wiki", "purpose": "Task-routing map for coding agents: points each kind of change (flags, modes, web behavior, retrieval, multi-agent, X/bookmarks integrations, cost/retries, output JSON, tests) to the right wiki page, and states the generated-wiki maintenance constraints from AGENTS.md and the scheduled OpenWiki workflow.", "seedPaths": [".github/workflows/openwiki-update.yml", "AGENTS.md", "README.md", "package.json", "src/cli.ts"], "relatedPages": ["/openwiki/architecture/overview.md", "/openwiki/concepts/modes-and-routing.md", "/openwiki/operations/reliability-and-cost.md", "/openwiki/testing/overview.md"], "instructions": ["Map tasks to pages: flag/config changes → /openwiki/architecture/cli-and-config.md; mode semantics → /openwiki/concepts/modes-and-routing.md; pipeline behavior → /openwiki/architecture/pipeline.md; web tools → /openwiki/concepts/web-search.md; retrieve/--output → /openwiki/workflows/retrieval.md; multi ensemble → /openwiki/workflows/multi-agent.md; X signal → /openwiki/integrations/x-signal.md; bookmarks → /openwiki/integrations/tweetsmash-bookmarks.md; cost/retries/exit codes → /openwiki/operations/reliability-and-cost.md; output shape → /openwiki/architecture/output-and-formatting.md; validating a change → /openwiki/testing/overview.md.", "This wiki is regenerated by the scheduled .github/workflows/openwiki-update.yml workflow; do not hand-edit generated OpenWiki pages unless explicitly asked — prefer updating source/docs and letting OpenWiki regenerate.", "Treat README.md as the user-facing contract and AGENTS.md as the repo convention; source code and tests are authoritative — wiki uncertainties are verification gaps, not automatic requirements."], "status": "pending"}]}, {"label": "background-agents · qwen3.8-flash", "source": "/Users/manik/Github/background-agents/openwiki/.run.json", "repo": "open-inspect", "runId": "ede5570f-885c-4f50-a802-c0bf30e2318f", "mode": "init", "phase": "generating", "startedAt": "2026-08-29T03:40:13.435Z", "language": "en", "model": "qwen3.8-flash", "producer": "openwiki/0.4.3", "planningContext": "Explore only package.json, README.md, AGENTS.md, and packages/*/package.json. Then immediately call submit_plan with a small hierarchy including /openwiki/quickstart.md plus 4-6 other pages. Prefer submitting over further exploration.", "deletePages": [], "pages": [{"id": "a4705978-fcbc-48a3-926e-a21b0b7cc9b8", "path": "/openwiki/architecture.md", "title": "System Architecture and Package Boundaries", "purpose": "How the tiers fit together (web client, control plane, data plane, bot workers), which package owns which responsibility, and the build/runtime boundaries an agent must respect when changing code.", "seedPaths": ["AGENTS.md", "README.md", "eslint.config.js", "knip.json", "packages/control-plane/package.json", "packages/github-bot/package.json", "packages/linear-bot/package.json", "packages/opencomputer-infra/package.json", "packages/slack-bot/package.json", "packages/web/package.json"], "relatedPages": ["/openwiki/concepts/shared-package.md", "/openwiki/operations/deploy-and-config.md", "/openwiki/quickstart.md", "/openwiki/workflows/session-lifecycle.md"], "instructions": ["Add a mermaid architecture diagram of client → control plane (DO + D1) → data plane sandbox → streaming back, and a second diagram of the package dependency graph. Follow the mermaid-diagrams skill guidance (valid syntax, labels from repo evidence).", "Cover repo-level tooling boundaries: npm workspaces at packages/*, vitest.workspace.ts, eslint.config.js, knip.json, ruff.toml for Python packages, .husky + lint-staged config in package.json.", "Describe the data-plane backends named in README.md packages table: sandbox-runtime, modal-infra, daytona-infra, e2b-infra, opencomputer-infra, and note that only opencomputer-infra has a package.json in this workspace (others are Python/tooling packages).", "Document the three tiers from AGENTS.md: Web client (Next.js on Vercel or Workers via OpenNext), Control plane (Cloudflare Workers + Durable Objects, one DO per session with SQLite storage, D1 for session index/repo metadata/environments/encrypted secrets), Data plane (Modal Python sandboxes running coding agents).", "Explain the bot layer as separate Cloudflare Workers using Hono (slack-bot, github-bot, linear-bot) and how each is built (esbuild bundle to dist/index.js, platform=browser, external cloudflare:*/node:*) — derive from each package.json.", "Include the security model summary from README.md: shared GitHub App installation token brokered to sandboxes via git credential helper, user OAuth token used for PR creation, sandbox auth token and WebSocket token scoped to one session; no per-user repo access validation (single-tenant only).", "State clearly what is NOT enforced today (multi-tenant isolation, per-repo authorization) so a change is not assumed safe."], "status": "complete"}, {"id": "b9d2d1a4-af5c-40aa-9c21-916a406cf1ae", "path": "/openwiki/concepts/shared-package.md", "title": "The Shared Package: Contract Between Services", "purpose": "What @open-inspect/shared exposes (subpath exports for auth, service-auth, models, triggers, git, cron, cache-store, logger, repository identity helpers and type namespaces) and why it must be built first when types change.", "seedPaths": ["AGENTS.md", "packages/control-plane/package.json", "packages/shared/package.json", "packages/slack-bot/package.json", "packages/web/package.json"], "relatedPages": ["/openwiki/architecture.md", "/openwiki/operations/deploy-and-config.md", "/openwiki/testing/testing-strategy.md", "/openwiki/workflows/session-lifecycle.md"], "instructions": ["Document the repository identity conventions from AGENTS.md: repo_owner may be a nested namespace containing '/', only repo_name is a single path segment, use shared identity helpers in TS, split on the LAST '/' when an owner/name string is unavoidable, and encode the owner as one API route segment.", "Enumerate the public surface from packages/shared/package.json exports (., /auth, /service-auth, /models, /classification, /logger, /cache-store, /app-name, /http-body, /regex, /user-id, /browser-auth-routes, /session-list-query, /sign-in-provider, /git, /cron, /triggers, plus ./types/* namespaces such as commit-signing, environments, github-identity, github-autofix, image-builds, integrations) and explain which consumer packages rely on each group.", "Explain how to verify a shared change: npm run build -w @open-inspect/shared then npm run typecheck and npm test at the root.", "Explain the file:../shared dependency used by every TS package and the AGENTS.md rule: build @open-inspect/shared first whenever shared types change; root build/typecheck scripts already order this.", "Note the lint-staged/ruff and complexity linter (scripts/lint-complexity.mjs plus scripts/lint-complexity-message.test.mjs) that shape how shared code must be written.", "Summarise the unit/naming conventions from AGENTS.md that shared types propagate: seconds in Python, milliseconds in TS, _MS suffixes, each default defined exactly once as a named constant, no literal values restated in comments."], "status": "complete"}, {"id": "31f725d5-f030-4682-82cb-917fbb242c80", "path": "/openwiki/operations/deploy-and-config.md", "title": "Configuration, Terraform, and Deployment", "purpose": "How services are configured and deployed: Terraform-generated Worker config, D1 migrations, web platform choice, Modal deploys, CI/CD triggers, and the known deployment gotchas that break runs.", "seedPaths": [".github/", ".husky/", "AGENTS.md", "README.md", "docs/GETTING_STARTED.md", "docs/SETUP_GUIDE.md", "package.json", "terraform/"], "relatedPages": ["/openwiki/architecture.md", "/openwiki/quickstart.md", "/openwiki/testing/testing-strategy.md", "/openwiki/workflows/session-lifecycle.md"], "instructions": ["Cover Modal data-plane operational rules: build sandbox image before deploy, never deploy src/app.py directly, CACHE_BUSTER in src/images/base.py for forced rebuilds, and npm run build:opencomputer-template at the root.", "Document Durable Object binding two-phase deploys (first enable_durable_object_bindings = false, then true) and GitHub App private keys needing PKCS#8 (openssl pkcs8 -topk8 -inform PEM -outform PEM -nocrypt).", "Document web platform choice: web_platform = \"cloudflare\" deploys via OpenNext to Workers instead of Vercel; NEXT_PUBLIC_WS_URL must be present at build time because Next.js inlines NEXT_PUBLIC_* into the client bundle; Vercel credentials are unnecessary dummy values on Cloudflare.", "Establish that control-plane Worker config is generated by Terraform and no wrangler.toml is checked in, and inspect terraform/ to document the stacks, variables, and D1 migration directory layout (terraform/d1/migrations/) referenced by AGENTS.md.", "Include rollback/verification guidance: which commands prove a change built cleanly before deploy (shared build, typecheck, test) and how migrations are applied.", "Inventory required environment/secrets surface as documented (GitHub App, D1, secrets encryption, ALLOWED_GITHUB_ORGS, provider account keys) using provider-accounts.md and docs/ as pointers; do not reproduce secret values.", "Summarise CI/CD triggers from AGENTS.md: Terraform deploys control plane + D1 migrations + web (when cloudflare) on terraform/ and packages/*/ changes; Vercel deploys web for packages/web and packages/shared; Modal deploys the data plane for packages/modal-infra via Terraform apply; CI runs lint, typecheck and tests for TS and Python on every push/PR.", "Use a mermaid diagram for the deploy pipeline (source change → CI → Terraform/Modal/Vercel) when the workflow is documented; follow the mermaid-diagrams skill."], "status": "complete"}, {"id": "e1e53714-bee6-4301-a750-01578cc3e6d3", "path": "/openwiki/testing/testing-strategy.md", "title": "Testing and Validation Strategy", "purpose": "Where tests live per package, how to run the narrowest meaningful validation, and how the control-plane integration harness with workerd + real D1 actually behaves.", "seedPaths": ["AGENTS.md", "package.json", "packages/control-plane/package.json", "packages/github-bot/package.json", "packages/linear-bot/package.json", "packages/slack-bot/package.json", "packages/web/package.json", "scripts/lint-complexity-message.test.mjs", "vitest.workspace.ts"], "relatedPages": ["/openwiki/architecture.md", "/openwiki/concepts/shared-package.md", "/openwiki/operations/deploy-and-config.md", "/openwiki/quickstart.md", "/openwiki/workflows/session-lifecycle.md"], "instructions": ["Add guidance on testing changes that cross package boundaries: rebuild shared first, then run dependents' typecheck/tests, because imports resolve against dist/.", "Explain integration harness invariants: one shared D1 instance across tests, cleanD1Tables() (or equivalent) in beforeEach/afterEach to avoid cross-test pollution, migrations from terraform/d1/migrations applied via test/integration/apply-migrations.ts, and helpers initSession(), queryDO(), seedEvents() in test/integration/helpers.ts.", "Give the command ladder from package.json/vitest.workspace.ts: npm test -w <pkg>, npm run test:integration -w @open-inspect/control-plane, npm run test:coverage, npm run typecheck, npm run lint / lint:fix / lint:complexity, npm run test:lint-complexity, npm run knip, and cd packages/modal-infra && pytest tests/ -v plus ruff check --fix && ruff format.", "Map test locations exactly as AGENTS.md states: control-plane unit co-located src/**/*.test.ts (Node env); control-plane integration in test/integration/*.test.ts running in workerd via @cloudflare/vitest-pool-workers with real D1 bindings (separate vitest.integration.config.ts); web/slack-bot/linear-bot co-located src/**/*.test.ts; github-bot in test/*.test.ts; modal-infra in tests/test_*.py with pytest + pytest-asyncio.", "Note the three tsconfig typecheck passes for control-plane (src, tsconfig.test.json, test/integration) and the Next.js typegen step required for web typecheck.", "State the AGENTS.md validation philosophy: treat source and tests as authoritative, prefer the narrowest quiet validation that proves the changed behavior, and preserve complete failure output."], "status": "complete"}, {"id": "6c6a79ac-db6d-4f42-aaf6-450808ae100b", "path": "/openwiki/workflows/integrations-and-triggers.md", "title": "Client Integrations and Automations", "purpose": "Non-web entry points into a session — Slack, GitHub, Linear, inbound webhooks, and scheduled/event automations — including how each bot worker authenticates and hands work to the control plane.", "seedPaths": ["AGENTS.md", "docs/AUTOMATIONS.md", "docs/integrations/GITHUB.md", "docs/integrations/LINEAR.md", "docs/integrations/SLACK.md", "packages/github-bot/package.json", "packages/linear-bot/package.json", "packages/slack-bot/package.json"], "relatedPages": ["/openwiki/architecture.md", "/openwiki/concepts/shared-package.md", "/openwiki/operations/deploy-and-config.md", "/openwiki/workflows/session-lifecycle.md"], "instructions": ["Add a mermaid flow diagram showing how each entry point converges on the same control-plane session creation path; follow the mermaid-diagrams skill.", "Automations from README.md/docs/AUTOMATIONS.md: cron (hourly/daily/weekly/monthly/custom 5-field with timezone), Sentry alert triage, GitHub workflow-run triggers with name/conclusion filters, inbound webhooks with JSONPath condition gates, multi-repo fan-out up to 10 repos, auto-pause after 3 consecutive failures, manual trigger, run history.", "Describe each bot worker as a Cloudflare Worker built with Hono + zod, bundling src/index.ts via esbuild, and consuming @open-inspect/shared for auth/types (per each package.json).", "Explain shared auth plumbing used by bots (shared ./auth, ./service-auth, ./browser-auth-routes, ./triggers, ./cron exports) and note the PKCS#8 requirement for GitHub App private keys on Cloudflare Workers.", "GitHub: PR review on PR open, @mention commands in PR comments, per-repo configuration, and PR creation using the prompting user's OAuth token with fallback to the shared GitHub App bot — verify against packages/github-bot (tests live in test/*.test.ts) and docs/integrations/GITHUB.md.", "Linear: agent webhook → coding session, progress activities, PR linking — verify against packages/linear-bot and docs/integrations/LINEAR.md.", "Slack: sessions from @mention/DM, PNG/JPEG/WebP/GIF prompt attachments, threaded replies, per-user model and branch preferences via App Home — verify details against packages/slack-bot and docs/integrations/SLACK.md."], "status": "complete"}, {"id": "e917d41c-93ba-4fea-97ef-d3e2d885fcad", "path": "/openwiki/workflows/session-lifecycle.md", "title": "Session Lifecycle: Prompt to Sandbox and Back", "purpose": "The core end-to-end flow — creating a session, WebSocket streaming between control plane and sandbox, snapshots/prebuilt images/warming, multiplayer, child sessions, secrets and git credentials — and the invariants that make it safe to change.", "seedPaths": ["AGENTS.md", "README.md", "docs/HOW_IT_WORKS.md", "packages/control-plane/README.md", "packages/control-plane/package.json", "packages/modal-infra/README.md"], "relatedPages": ["/openwiki/architecture.md", "/openwiki/concepts/shared-package.md", "/openwiki/operations/deploy-and-config.md", "/openwiki/testing/testing-strategy.md", "/openwiki/workflows/integrations-and-triggers.md"], "instructions": ["Add mermaid sequence and state diagrams for the prompt→sandbox→stream path and the session/sandbox lifecycle (fresh vs prebuilt image vs snapshot restore, timeouts, failure handling); follow the mermaid-diagrams skill.", "Cover child sessions (spawn-child, send-child-prompt, get-child-status, cancel-child, depth limits and per-repo guardrails) and port tunneling (up to 10 ports, URLs in /workspace/.tunnels.env before .openinspect/start.sh runs).", "Cover modal-infra deployment invariants from AGENTS.md: never deploy src/app.py directly; run uv run python deploy.py --build-sandbox-image before uv run modal deploy deploy.py (or -m src); bump CACHE_BUSTER in src/images/base.py to force an image rebuild.", "Cover multi-repo sessions and environments: up to 10 repos per session, saved environments with their own secrets scope and optional prebuilds; secrets are AES-256-GCM encrypted and scoped globally/per-repo/per-environment, injected as env vars at spawn.", "Cover multiplayer presence, per-prompt commit attribution (configureGitIdentity with author.scmName/scmEmail) and the fallback to the shared GitHub App bot when a user has no SCM token.", "Cover startup performance layers from README.md: filesystem snapshots after each prompt, per-repo and per-environment pre-built images rebuilt every 30 minutes (docs/IMAGE_PREBUILD.md), and proactive warming while the user types.", "Document repository lifecycle scripts and their failure semantics from README.md: .openinspect/setup.sh (fatal in image build mode, non-fatal for fresh sessions, skipped for prebuilt/snapshot-restore) vs .openinspect/start.sh (runs on every non-build start, strict failure), defaults SETUP_TIMEOUT_SECONDS=300 and START_TIMEOUT_SECONDS=120, and OPENINSPECT_BOOT_MODE values build|fresh|repo_image|snapshot_restore.", "Mark unknowns explicitly rather than guessing file locations, since this page's seeds are docs-level pointers.", "Trace the canonical flow stated in AGENTS.md: user prompt → web client → control-plane Durable Object (WebSocket) → Modal sandbox → streaming events back along the same WebSocket chain; identify the concrete handler/DO/sandbox classes by reading the packages named in docs/HOW_IT_WORKS.md and packages/control-plane/README.md."], "status": "pending"}, {"id": "f811250d-6ab6-4679-917a-a06419c19e3d", "path": "/openwiki/quickstart.md", "title": "Quickstart — Finding Your Way in Open-Inspect", "purpose": "Entry point and task-routing map: what Open-Inspect is (single-tenant background coding agent), the three-tier stack, which package owns which change, and where in the wiki to go for each kind of task.", "seedPaths": ["AGENTS.md", "README.md", "docs/GETTING_STARTED.md", "docs/HOW_IT_WORKS.md", "docs/SETUP_GUIDE.md", "package.json", "vitest.workspace.ts"], "relatedPages": ["/openwiki/architecture.md", "/openwiki/concepts/shared-package.md", "/openwiki/operations/deploy-and-config.md", "/openwiki/testing/testing-strategy.md", "/openwiki/workflows/session-lifecycle.md"], "instructions": ["Add a task-routing map linking to /openwiki/architecture.md, /openwiki/concepts/shared-package.md, /openwiki/workflows/session-lifecycle.md, /openwiki/workflows/integrations-and-triggers.md, /openwiki/operations/deploy-and-config.md, /openwiki/testing/testing-strategy.md.", "Call out the two highest-value constraints up front: build @open-inspect/shared before dependents, and repo owners may be nested namespaces (may contain '/').", "Do not list generated folder index pages as links; only link planned pages.", "Give a package table generated from packages/*/package.json (name, framework, build/test/typecheck scripts) and the dependency graph from AGENTS.md: @open-inspect/shared ← control-plane, web, slack-bot, github-bot, linear-bot.", "List the root workspace commands from package.json scripts (build, typecheck, lint, lint:fix, format, test, test:integration, test:coverage, knip, build:opencomputer-template) and note Node >= 22 engines.", "Present Open-Inspect as a single-tenant background coding agent system: Cloudflare Workers control plane (Durable Objects + D1), Modal/Python data plane, Next.js web client, plus Hono bot workers — state this from README.md/AGENTS.md rather than inventing."], "status": "pending"}]}]</script>
-<script type="module">
-import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+      function renderMeta(run) {
+        const st = counts(run.pages);
+        $("kpis").innerHTML = [
+          [run.pages.length, "pages"],
+          [st.complete || 0, "complete"],
+          [st.pending || 0, "pending"],
+          [st.skipped || 0, "skipped"],
+          [new Set(run.pages.map((p) => folderOf(p.path))).size, "folders"],
+        ]
+          .map(
+            (pair, i) =>
+              `<div class="kpi" style="--i:${i}"><b>${pair[0]}</b><span>${pair[1]}</span></div>`,
+          )
+          .join("");
 
-const EMBEDDED = JSON.parse(document.getElementById("runs-data").textContent);
-const $ = (id) => document.getElementById(id);
-const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({
-  "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-}[c]));
-const folderOf = (path) => {
-  const i = path.lastIndexOf("/");
-  return i <= 0 ? "/openwiki" : path.slice(0, i);
-};
-const shortName = (path) => path.replace(/^\/openwiki\//, "").replace(/\.md$/, "");
-const counts = (pages) => pages.reduce((a, p) => {
-  a[p.status] = (a[p.status] || 0) + 1;
-  return a;
-}, {});
-
-function slimFromRunJson(data, source) {
-  const plan = data.plan || {};
-  const pages = (plan.pages || []).map((p) => ({
-    id: p.id,
-    path: p.path,
-    title: p.title,
-    purpose: p.purpose,
-    seedPaths: p.seedPaths || [],
-    relatedPages: p.relatedPages || [],
-    instructions: p.instructions || [],
-    status: p.status || "pending"
-  }));
-  return {
-    label: source || "loaded .run.json",
-    source: source || "file",
-    repo: "",
-    runId: data.runId,
-    mode: data.mode,
-    phase: data.phase,
-    startedAt: data.startedAt,
-    language: data.language,
-    model: data.actor?.metadataModel,
-    producer: data.actor?.producerActor,
-    planningContext: data.planningContext || null,
-    deletePages: plan.deletePages || [],
-    pages
-  };
-}
-
-let runs = EMBEDDED.slice();
-let current = runs[0] || null;
-let folderFilter = "all";
-let mermaidReady = false;
-let mermaidInited = false;
-let renderGraph = () => {};
-
-function fillSelect() {
-  const sel = $("runSelect");
-  sel.innerHTML = runs.map((r, i) =>
-    `<option value="${i}">${esc(r.label)} · ${r.pages.length} pages · ${esc(r.phase || "")}</option>`
-  ).join("");
-}
-
-function renderMeta(run) {
-  const st = counts(run.pages);
-  $("kpis").innerHTML = [
-    [run.pages.length, "pages"],
-    [st.complete || 0, "complete"],
-    [st.pending || 0, "pending"],
-    [st.skipped || 0, "skipped"],
-    [new Set(run.pages.map((p) => folderOf(p.path))).size, "folders"]
-  ].map((pair, i) =>
-    `<div class="kpi" style="--i:${i}"><b>${pair[0]}</b><span>${pair[1]}</span></div>`
-  ).join("");
-
-  $("runMeta").innerHTML = `<dl class="meta-grid">
+        $("runMeta").innerHTML = `<dl class="meta-grid">
     <div><dt>Model</dt><dd>${esc(run.model || "—")}</dd></div>
     <div><dt>Producer</dt><dd>${esc(run.producer || "—")}</dd></div>
     <div><dt>Mode / phase</dt><dd>${esc(run.mode)} → ${esc(run.phase)}</dd></div>
@@ -681,7 +1491,7 @@ function renderMeta(run) {
     <div><dt>Source</dt><dd><code>${esc(run.source || "—")}</code></dd></div>
   </dl>`;
 
-  $("howCard").innerHTML = `
+        $("howCard").innerHTML = `
     <p class="purpose">The planner’s only allowed action is <code>submit_plan</code>. It is supposed to
     map manifests, entrypoints, and a few end-to-end flows, then emit the smallest complete
     information architecture — not a file-tree dump. Init must include <code>/openwiki/quickstart.md</code>,
@@ -690,86 +1500,109 @@ function renderMeta(run) {
     <em>seedPaths</em> are starting files (not bounds), <em>relatedPages</em> are the wiki neighbors,
     and <em>instructions</em> are the constraints the planner copied onto that page.</p>`;
 
-  $("planningContext").innerHTML = run.planningContext
-    ? `<strong>Planning context given to the model.</strong> ${esc(run.planningContext)}`
-    : `<strong>No planningContext on this checkpoint.</strong> The page briefs below are still the submitted plan.`;
-}
+        $("planningContext").innerHTML = run.planningContext
+          ? `<strong>Planning context given to the model.</strong> ${esc(run.planningContext)}`
+          : `<strong>No planningContext on this checkpoint.</strong> The page briefs below are still the submitted plan.`;
+      }
 
-function renderFolders(run) {
-  const groups = new Map();
-  run.pages.forEach((p) => {
-    const f = folderOf(p.path);
-    if (!groups.has(f)) groups.set(f, []);
-    groups.get(f).push(p);
-  });
-  $("folders").innerHTML = [...groups.entries()].map(([folder, pages]) => `
+      function renderFolders(run) {
+        const groups = new Map();
+        run.pages.forEach((p) => {
+          const f = folderOf(p.path);
+          if (!groups.has(f)) groups.set(f, []);
+          groups.get(f).push(p);
+        });
+        $("folders").innerHTML = [...groups.entries()]
+          .map(
+            ([folder, pages]) => `
     <article class="ve-card folder">
       <h3>${esc(folder)} · ${pages.length}</h3>
-      <ul>${pages.map((p) =>
-        `<li class="${esc(p.status)}"><a href="#page-${esc(p.id)}">${esc(p.title)}</a>
-         <div class="path">${esc(shortName(p.path))}</div></li>`
-      ).join("")}</ul>
-    </article>`).join("");
-}
+      <ul>${pages
+        .map(
+          (p) =>
+            `<li class="${esc(p.status)}"><a href="#page-${esc(p.id)}">${esc(p.title)}</a>
+         <div class="path">${esc(shortName(p.path))}</div></li>`,
+        )
+        .join("")}</ul>
+    </article>`,
+          )
+          .join("");
+      }
 
-function folderKey(path) {
-  const f = folderOf(path);
-  return f === "/openwiki" ? "quickstart" : f.replace("/openwiki/", "");
-}
-function mermaidFid(name) {
-  return "f" + String(name).replace(/[^a-zA-Z0-9]/g, "") || "root";
-}
-function mermaidLabel(text) {
-  return String(text).replace(/["#]/g, "").replace(/</g, "lt").replace(/\|/g, "/").slice(0, 48);
-}
+      function folderKey(path) {
+        const f = folderOf(path);
+        return f === "/openwiki" ? "quickstart" : f.replace("/openwiki/", "");
+      }
+      function mermaidFid(name) {
+        return "f" + String(name).replace(/[^a-zA-Z0-9]/g, "") || "root";
+      }
+      function mermaidLabel(text) {
+        return String(text)
+          .replace(/["#]/g, "")
+          .replace(/</g, "lt")
+          .replace(/\|/g, "/")
+          .slice(0, 48);
+      }
 
-function buildMermaid(run) {
-  const pages = run.pages;
-  if (!pages.length) return "flowchart TD\n  empty[No plan submitted yet]";
-  const groups = new Map();
-  pages.forEach((p) => {
-    const k = folderKey(p.path);
-    if (!groups.has(k)) groups.set(k, []);
-    groups.get(k).push(p);
-  });
-  const lines = ["flowchart TD"];
-  for (const [k, ps] of groups) {
-    const done = ps.filter((p) => p.status === "complete").length;
-    lines.push(`  ${mermaidFid(k)}["${mermaidLabel(k)} · ${ps.length}p · ${done} done"]`);
-  }
-  const seen = new Set();
-  pages.forEach((p) => {
-    const a = folderKey(p.path);
-    (p.relatedPages || []).forEach((rel) => {
-      const b = folderKey(rel);
-      if (a === b) return;
-      const key = a < b ? a + "|" + b : b + "|" + a;
-      if (seen.has(key)) return;
-      seen.add(key);
-      lines.push(`  ${mermaidFid(a)} --- ${mermaidFid(b)}`);
-    });
-  });
-  return lines.join("\n");
-}
+      function buildMermaid(run) {
+        const pages = run.pages;
+        if (!pages.length)
+          return "flowchart TD\n  empty[No plan submitted yet]";
+        const groups = new Map();
+        pages.forEach((p) => {
+          const k = folderKey(p.path);
+          if (!groups.has(k)) groups.set(k, []);
+          groups.get(k).push(p);
+        });
+        const lines = ["flowchart TD"];
+        for (const [k, ps] of groups) {
+          const done = ps.filter((p) => p.status === "complete").length;
+          lines.push(
+            `  ${mermaidFid(k)}["${mermaidLabel(k)} · ${ps.length}p · ${done} done"]`,
+          );
+        }
+        const seen = new Set();
+        pages.forEach((p) => {
+          const a = folderKey(p.path);
+          (p.relatedPages || []).forEach((rel) => {
+            const b = folderKey(rel);
+            if (a === b) return;
+            const key = a < b ? a + "|" + b : b + "|" + a;
+            if (seen.has(key)) return;
+            seen.add(key);
+            lines.push(`  ${mermaidFid(a)} --- ${mermaidFid(b)}`);
+          });
+        });
+        return lines.join("\n");
+      }
 
-function renderPages(run) {
-  const folders = ["all", ...new Set(run.pages.map((p) => folderOf(p.path)))];
-  $("filters").innerHTML = folders.map((f) =>
-    `<button type="button" class="chip${f === folderFilter ? " on" : ""}" data-folder="${esc(f)}">${esc(f === "all" ? "all pages" : f === "/openwiki" ? "quickstart" : f.replace("/openwiki/", ""))}</button>`
-  ).join("");
-  $("filters").onclick = (e) => {
-    const btn = e.target.closest("[data-folder]");
-    if (!btn) return;
-    folderFilter = btn.dataset.folder;
-    renderPages(current);
-  };
-  if (!run.pages.length) {
-    $("pages").innerHTML = `<div class="ve-card empty">This checkpoint is still in planning — no submit_plan yet.</div>`;
-    return;
-  }
-  $("pages").innerHTML = run.pages.map((p) => {
-    const hide = folderFilter !== "all" && folderOf(p.path) !== folderFilter;
-    return `<article class="page${hide ? " hidden" : ""}" id="page-${esc(p.id)}">
+      function renderPages(run) {
+        const folders = [
+          "all",
+          ...new Set(run.pages.map((p) => folderOf(p.path))),
+        ];
+        $("filters").innerHTML = folders
+          .map(
+            (f) =>
+              `<button type="button" class="chip${f === folderFilter ? " on" : ""}" data-folder="${esc(f)}">${esc(f === "all" ? "all pages" : f === "/openwiki" ? "quickstart" : f.replace("/openwiki/", ""))}</button>`,
+          )
+          .join("");
+        $("filters").onclick = (e) => {
+          const btn = e.target.closest("[data-folder]");
+          if (!btn) return;
+          folderFilter = btn.dataset.folder;
+          renderPages(current);
+        };
+        if (!run.pages.length) {
+          $("pages").innerHTML =
+            `<div class="ve-card empty">This checkpoint is still in planning — no submit_plan yet.</div>`;
+          return;
+        }
+        $("pages").innerHTML = run.pages
+          .map((p) => {
+            const hide =
+              folderFilter !== "all" && folderOf(p.path) !== folderFilter;
+            return `<article class="page${hide ? " hidden" : ""}" id="page-${esc(p.id)}">
       <div class="page-top">
         <span class="status ${esc(p.status)}">${esc(p.status)}</span>
         <span class="path">${esc(p.path)}</span>
@@ -783,300 +1616,443 @@ function renderPages(run) {
       <div class="block-label">Related pages</div>
       <div class="related">${(p.relatedPages || []).map((x) => `<span class="tag rel">${esc(x)}</span>`).join("") || "—"}</div>
     </article>`;
-  }).join("");
-}
+          })
+          .join("");
+      }
 
-function render(run) {
-  current = run;
-  if (!run) {
-    $("kpis").innerHTML = "";
-    $("runMeta").innerHTML = `<p class="empty">Drop a <code>.run.json</code> to inspect its plan.</p>`;
-    return;
-  }
-  renderMeta(run);
-  renderFolders(run);
-  renderPages(run);
-  renderLinkTable(run);
-}
+      function render(run) {
+        current = run;
+        if (!run) {
+          $("kpis").innerHTML = "";
+          $("runMeta").innerHTML =
+            `<p class="empty">Drop a <code>.run.json</code> to inspect its plan.</p>`;
+          return;
+        }
+        renderMeta(run);
+        renderFolders(run);
+        renderPages(run);
+        renderLinkTable(run);
+      }
 
-function renderLinkTable(run) {
-  const el = $("graphTable");
-  if (!el) return;
-  const pages = run.pages || [];
-  if (!pages.length) {
-    el.innerHTML = `<p class="empty">No plan submitted yet.</p>`;
-    return;
-  }
-  const keys = [...new Set(pages.map((p) => folderKey(p.path)))];
-  const hits = new Set();
-  pages.forEach((p) => {
-    const a = folderKey(p.path);
-    (p.relatedPages || []).forEach((rel) => {
-      hits.add(a + ">" + folderKey(rel));
-    });
-  });
-  const head = `<th class="row">from \\ to</th>` + keys.map((k) => `<th>${esc(k)}</th>`).join("");
-  const body = keys.map((a) => {
-    const cells = keys.map((b) => {
-      const on = hits.has(a + ">" + b);
-      return `<td class="${on ? "hit" : ""}">${on ? (a === b ? "●" : "→") : "·"}</td>`;
-    }).join("");
-    return `<tr><td class="row">${esc(a)}</td>${cells}</tr>`;
-  }).join("");
-  el.innerHTML = `<table class="link-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
-}
+      function renderLinkTable(run) {
+        const el = $("graphTable");
+        if (!el) return;
+        const pages = run.pages || [];
+        if (!pages.length) {
+          el.innerHTML = `<p class="empty">No plan submitted yet.</p>`;
+          return;
+        }
+        const keys = [...new Set(pages.map((p) => folderKey(p.path)))];
+        const hits = new Set();
+        pages.forEach((p) => {
+          const a = folderKey(p.path);
+          (p.relatedPages || []).forEach((rel) => {
+            hits.add(a + ">" + folderKey(rel));
+          });
+        });
+        const head =
+          `<th class="row">from \\ to</th>` +
+          keys.map((k) => `<th>${esc(k)}</th>`).join("");
+        const body = keys
+          .map((a) => {
+            const cells = keys
+              .map((b) => {
+                const on = hits.has(a + ">" + b);
+                return `<td class="${on ? "hit" : ""}">${on ? (a === b ? "●" : "→") : "·"}</td>`;
+              })
+              .join("");
+            return `<tr><td class="row">${esc(a)}</td>${cells}</tr>`;
+          })
+          .join("");
+        el.innerHTML = `<table class="link-table"><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>`;
+      }
 
-$("runSelect").addEventListener("change", (e) => {
-  folderFilter = "all";
-  render(runs[Number(e.target.value)]);
-});
-$("fileInput").addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  try {
-    const data = JSON.parse(await file.text());
-    const run = slimFromRunJson(data, file.name);
-    runs.unshift(run);
-    folderFilter = "all";
-    fillSelect();
-    $("runSelect").value = "0";
-    render(run);
-  } catch (err) {
-    alert("Could not parse that file as .run.json: " + err.message);
-  }
-});
+      $("runSelect").addEventListener("change", (e) => {
+        folderFilter = "all";
+        render(runs[Number(e.target.value)]);
+      });
+      $("fileInput").addEventListener("change", async (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        try {
+          const data = JSON.parse(await file.text());
+          const run = slimFromRunJson(data, file.name);
+          runs.unshift(run);
+          folderFilter = "all";
+          fillSelect();
+          $("runSelect").value = "0";
+          render(run);
+        } catch (err) {
+          alert("Could not parse that file as .run.json: " + err.message);
+        }
+      });
 
-fillSelect();
-render(current);
+      fillSelect();
+      render(current);
 
-const config = {
-  fitPadding: 28,
-  minHeight: 280,
-  maxHeightPx: 560,
-  maxHeightVh: 0.55,
-  maxInitialZoom: 1.6,
-  minZoom: 0.08,
-  maxZoom: 6.5,
-  zoomStep: 0.14,
-  readabilityFloor: 0.58
-};
-const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
-let activeDrag = null;
-addEventListener("mousemove", (e) => activeDrag?.onMove(e));
-addEventListener("mouseup", () => { activeDrag?.onEnd(); activeDrag = null; });
-const isDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      const config = {
+        fitPadding: 28,
+        minHeight: 280,
+        maxHeightPx: 560,
+        maxHeightVh: 0.55,
+        maxInitialZoom: 1.6,
+        minZoom: 0.08,
+        maxZoom: 6.5,
+        zoomStep: 0.14,
+        readabilityFloor: 0.58,
+      };
+      const clamp = (n, lo, hi) => Math.max(lo, Math.min(hi, n));
+      let activeDrag = null;
+      addEventListener("mousemove", (e) => activeDrag?.onMove(e));
+      addEventListener("mouseup", () => {
+        activeDrag?.onEnd();
+        activeDrag = null;
+      });
+      const isDark = matchMedia("(prefers-color-scheme: dark)").matches;
 
-mermaid.initialize({
-  startOnLoad: false,
-  theme: "base",
-  look: "classic",
-  flowchart: {
-    htmlLabels: false,
-    nodeSpacing: 36,
-    rankSpacing: 48,
-    padding: 8,
-    useMaxWidth: false
-  },
-  themeVariables: {
-    fontFamily: "IBM Plex Mono, monospace",
-    fontSize: "14px",
-    primaryColor: isDark ? "#2a241e" : "#f3ece0",
-    primaryBorderColor: isDark ? "#e0b14a" : "#9a7420",
-    primaryTextColor: isDark ? "#f3eadc" : "#241c12",
-    secondaryColor: isDark ? "#1e2a38" : "#e7eef4",
-    secondaryBorderColor: isDark ? "#9ec0d9" : "#3d5a73",
-    secondaryTextColor: isDark ? "#f3eadc" : "#241c12",
-    tertiaryColor: isDark ? "#2a2418" : "#fff6e8",
-    tertiaryBorderColor: isDark ? "#f0b15a" : "#9a5b12",
-    tertiaryTextColor: isDark ? "#f3eadc" : "#241c12",
-    lineColor: isDark ? "#b3a894" : "#8a7c6a",
-    clusterBkg: isDark ? "#1e1a16" : "#fbf8f1",
-    clusterBorder: isDark ? "#e0b14a" : "#9a7420",
-    titleColor: isDark ? "#e0b14a" : "#9a7420"
-  }
-});
-mermaidInited = true;
+      mermaid.initialize({
+        startOnLoad: false,
+        theme: "base",
+        look: "classic",
+        flowchart: {
+          htmlLabels: false,
+          nodeSpacing: 36,
+          rankSpacing: 48,
+          padding: 8,
+          useMaxWidth: false,
+        },
+        themeVariables: {
+          fontFamily: "IBM Plex Mono, monospace",
+          fontSize: "14px",
+          primaryColor: isDark ? "#2a241e" : "#f3ece0",
+          primaryBorderColor: isDark ? "#e0b14a" : "#9a7420",
+          primaryTextColor: isDark ? "#f3eadc" : "#241c12",
+          secondaryColor: isDark ? "#1e2a38" : "#e7eef4",
+          secondaryBorderColor: isDark ? "#9ec0d9" : "#3d5a73",
+          secondaryTextColor: isDark ? "#f3eadc" : "#241c12",
+          tertiaryColor: isDark ? "#2a2418" : "#fff6e8",
+          tertiaryBorderColor: isDark ? "#f0b15a" : "#9a5b12",
+          tertiaryTextColor: isDark ? "#f3eadc" : "#241c12",
+          lineColor: isDark ? "#b3a894" : "#8a7c6a",
+          clusterBkg: isDark ? "#1e1a16" : "#fbf8f1",
+          clusterBorder: isDark ? "#e0b14a" : "#9a7420",
+          titleColor: isDark ? "#e0b14a" : "#9a7420",
+        },
+      });
+      mermaidInited = true;
 
-function initDiagram(shell) {
-  const wrap = shell.querySelector(".mermaid-wrap");
-  const viewport = shell.querySelector(".mermaid-viewport");
-  const canvas = shell.querySelector(".mermaid-canvas");
-  const source = shell.querySelector(".diagram-source");
-  const label = shell.querySelector(".zoom-label");
-  if (!wrap || !viewport || !canvas || !source || !label) return;
+      function initDiagram(shell) {
+        const wrap = shell.querySelector(".mermaid-wrap");
+        const viewport = shell.querySelector(".mermaid-viewport");
+        const canvas = shell.querySelector(".mermaid-canvas");
+        const source = shell.querySelector(".diagram-source");
+        const label = shell.querySelector(".zoom-label");
+        if (!wrap || !viewport || !canvas || !source || !label) return;
 
-  let zoom = 1, fitMode = "contain", panX = 0, panY = 0, svgW = 0, svgH = 0;
-  let sx = 0, sy = 0, spx = 0, spy = 0, touchDist = 0, touchCx = 0, touchCy = 0;
+        let zoom = 1,
+          fitMode = "contain",
+          panX = 0,
+          panY = 0,
+          svgW = 0,
+          svgH = 0;
+        let sx = 0,
+          sy = 0,
+          spx = 0,
+          spy = 0,
+          touchDist = 0,
+          touchCx = 0,
+          touchCy = 0;
 
-  function constrainPan() {
-    const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
-    const rW = svgW * zoom, rH = svgH * zoom, pad = config.fitPadding;
-    panX = (rW + pad * 2 <= vpW) ? (vpW - rW) / 2 : clamp(panX, vpW - rW - pad, pad);
-    panY = (rH + pad * 2 <= vpH) ? (vpH - rH) / 2 : clamp(panY, vpH - rH - pad, pad);
-  }
-  function applyTransform() {
-    const svg = canvas.querySelector("svg");
-    if (!svg || !svgW) return;
-    constrainPan();
-    svg.style.width = (svgW * zoom) + "px";
-    svg.style.height = (svgH * zoom) + "px";
-    canvas.style.transform = `translate(${panX}px, ${panY}px)`;
-    label.textContent = Math.round(zoom * 100) + "% — " + fitMode;
-  }
-  function canPan() {
-    return svgW * zoom + config.fitPadding * 2 > viewport.clientWidth
-        || svgH * zoom + config.fitPadding * 2 > viewport.clientHeight;
-  }
-  function computeSmartFit() {
-    const vpW = viewport.clientWidth, vpH = viewport.clientHeight;
-    const aW = Math.max(80, vpW - config.fitPadding * 2);
-    const aH = Math.max(80, vpH - config.fitPadding * 2);
-    const contain = Math.min(aW / svgW, aH / svgH);
-    let z = contain, mode = "contain";
-    if (contain < config.readabilityFloor) {
-      const chartR = svgH / svgW, vpR = vpH / Math.max(vpW, 1);
-      if (chartR >= vpR) { z = aW / svgW; mode = "width-priority"; }
-      else { z = aH / svgH; mode = "height-priority"; }
-    }
-    return { zoom: clamp(z, config.minZoom, config.maxInitialZoom), mode };
-  }
-  function fitDiagram() {
-    if (!svgW) return;
-    const fit = computeSmartFit();
-    zoom = fit.zoom; fitMode = fit.mode;
-    panX = (viewport.clientWidth - svgW * zoom) / 2;
-    panY = (viewport.clientHeight - svgH * zoom) / 2;
-    applyTransform();
-  }
-  function setOneToOne() {
-    zoom = clamp(1, config.minZoom, config.maxZoom); fitMode = "1:1";
-    panX = (viewport.clientWidth - svgW * zoom) / 2;
-    panY = (viewport.clientHeight - svgH * zoom) / 2;
-    applyTransform();
-  }
-  function zoomAround(factor, cx, cy) {
-    const next = clamp(zoom * factor, config.minZoom, config.maxZoom);
-    const ratio = next / zoom;
-    panX = cx - ratio * (cx - panX);
-    panY = cy - ratio * (cy - panY);
-    zoom = next; fitMode = "custom";
-    applyTransform();
-  }
-  function readSvgNaturalSize(svg) {
-    let w = 0, h = 0;
-    if (svg.viewBox?.baseVal?.width > 0) { w = svg.viewBox.baseVal.width; h = svg.viewBox.baseVal.height; }
-    if (!w) { w = parseFloat(svg.getAttribute("width")) || 0; h = parseFloat(svg.getAttribute("height")) || 0; }
-    if (!w) { try { const b = svg.getBBox(); w = b.width; h = b.height; } catch {} }
-    if (!w) { const r = svg.getBoundingClientRect(); w = r.width || 1000; h = r.height || 700; }
-    if (!svg.getAttribute("viewBox")) svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
-    return { w, h };
-  }
-  function setAdaptiveHeight() {
-    if (!svgW) return;
-    const usableW = Math.max(280, wrap.getBoundingClientRect().width - 2);
-    const idealH = (svgH / svgW) * usableW + config.fitPadding * 2;
-    const maxVp = Math.floor(innerHeight * config.maxHeightVh);
-    const hardMax = Math.min(config.maxHeightPx, Math.max(config.minHeight + 40, maxVp));
-    wrap.style.height = Math.round(clamp(idealH, config.minHeight, hardMax)) + "px";
-  }
-  function openInNewTab() {
-    const svg = canvas.querySelector("svg");
-    if (!svg) return;
-    const clone = svg.cloneNode(true);
-    clone.style.width = ""; clone.style.height = "";
-    const bg = isDark ? "#14110e" : "#f4efe6";
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Plan graph</title>
+        function constrainPan() {
+          const vpW = viewport.clientWidth,
+            vpH = viewport.clientHeight;
+          const rW = svgW * zoom,
+            rH = svgH * zoom,
+            pad = config.fitPadding;
+          panX =
+            rW + pad * 2 <= vpW
+              ? (vpW - rW) / 2
+              : clamp(panX, vpW - rW - pad, pad);
+          panY =
+            rH + pad * 2 <= vpH
+              ? (vpH - rH) / 2
+              : clamp(panY, vpH - rH - pad, pad);
+        }
+        function applyTransform() {
+          const svg = canvas.querySelector("svg");
+          if (!svg || !svgW) return;
+          constrainPan();
+          svg.style.width = svgW * zoom + "px";
+          svg.style.height = svgH * zoom + "px";
+          canvas.style.transform = `translate(${panX}px, ${panY}px)`;
+          label.textContent = Math.round(zoom * 100) + "% — " + fitMode;
+        }
+        function canPan() {
+          return (
+            svgW * zoom + config.fitPadding * 2 > viewport.clientWidth ||
+            svgH * zoom + config.fitPadding * 2 > viewport.clientHeight
+          );
+        }
+        function computeSmartFit() {
+          const vpW = viewport.clientWidth,
+            vpH = viewport.clientHeight;
+          const aW = Math.max(80, vpW - config.fitPadding * 2);
+          const aH = Math.max(80, vpH - config.fitPadding * 2);
+          const contain = Math.min(aW / svgW, aH / svgH);
+          let z = contain,
+            mode = "contain";
+          if (contain < config.readabilityFloor) {
+            const chartR = svgH / svgW,
+              vpR = vpH / Math.max(vpW, 1);
+            if (chartR >= vpR) {
+              z = aW / svgW;
+              mode = "width-priority";
+            } else {
+              z = aH / svgH;
+              mode = "height-priority";
+            }
+          }
+          return {
+            zoom: clamp(z, config.minZoom, config.maxInitialZoom),
+            mode,
+          };
+        }
+        function fitDiagram() {
+          if (!svgW) return;
+          const fit = computeSmartFit();
+          zoom = fit.zoom;
+          fitMode = fit.mode;
+          panX = (viewport.clientWidth - svgW * zoom) / 2;
+          panY = (viewport.clientHeight - svgH * zoom) / 2;
+          applyTransform();
+        }
+        function setOneToOne() {
+          zoom = clamp(1, config.minZoom, config.maxZoom);
+          fitMode = "1:1";
+          panX = (viewport.clientWidth - svgW * zoom) / 2;
+          panY = (viewport.clientHeight - svgH * zoom) / 2;
+          applyTransform();
+        }
+        function zoomAround(factor, cx, cy) {
+          const next = clamp(zoom * factor, config.minZoom, config.maxZoom);
+          const ratio = next / zoom;
+          panX = cx - ratio * (cx - panX);
+          panY = cy - ratio * (cy - panY);
+          zoom = next;
+          fitMode = "custom";
+          applyTransform();
+        }
+        function readSvgNaturalSize(svg) {
+          let w = 0,
+            h = 0;
+          if (svg.viewBox?.baseVal?.width > 0) {
+            w = svg.viewBox.baseVal.width;
+            h = svg.viewBox.baseVal.height;
+          }
+          if (!w) {
+            w = parseFloat(svg.getAttribute("width")) || 0;
+            h = parseFloat(svg.getAttribute("height")) || 0;
+          }
+          if (!w) {
+            try {
+              const b = svg.getBBox();
+              w = b.width;
+              h = b.height;
+            } catch {}
+          }
+          if (!w) {
+            const r = svg.getBoundingClientRect();
+            w = r.width || 1000;
+            h = r.height || 700;
+          }
+          if (!svg.getAttribute("viewBox"))
+            svg.setAttribute("viewBox", `0 0 ${w} ${h}`);
+          return { w, h };
+        }
+        function setAdaptiveHeight() {
+          if (!svgW) return;
+          const usableW = Math.max(280, wrap.getBoundingClientRect().width - 2);
+          const idealH = (svgH / svgW) * usableW + config.fitPadding * 2;
+          const maxVp = Math.floor(innerHeight * config.maxHeightVh);
+          const hardMax = Math.min(
+            config.maxHeightPx,
+            Math.max(config.minHeight + 40, maxVp),
+          );
+          wrap.style.height =
+            Math.round(clamp(idealH, config.minHeight, hardMax)) + "px";
+        }
+        function openInNewTab() {
+          const svg = canvas.querySelector("svg");
+          if (!svg) return;
+          const clone = svg.cloneNode(true);
+          clone.style.width = "";
+          clone.style.height = "";
+          const bg = isDark ? "#14110e" : "#f4efe6";
+          const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Plan graph</title>
       <style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;background:${bg};padding:40px}</style>
       </head><body>${clone.outerHTML}</body></html>`;
-    open(URL.createObjectURL(new Blob([html], { type: "text/html" })), "_blank");
-  }
-  async function renderOnce() {
-    try {
-      const code = source.textContent.trim();
-      if (!code) { label.textContent = "Empty graph"; return; }
-      const id = "diagram-" + Date.now() + "-" + Math.random().toString(36).slice(2, 8);
-      const { svg } = await mermaid.render(id, code);
-      canvas.innerHTML = svg;
-      const svgNode = canvas.querySelector("svg");
-      if (!svgNode) { label.textContent = "No SVG"; return; }
-      const size = readSvgNaturalSize(svgNode);
-      svgW = size.w; svgH = size.h;
-      svgNode.removeAttribute("width");
-      svgNode.removeAttribute("height");
-      svgNode.style.maxWidth = "none";
-      svgNode.style.display = "block";
-      setAdaptiveHeight();
-      fitDiagram();
-    } catch (err) {
-      console.error(err);
-      label.textContent = "Error: " + (err.message || "render failed");
-    }
-  }
+          open(
+            URL.createObjectURL(new Blob([html], { type: "text/html" })),
+            "_blank",
+          );
+        }
+        async function renderOnce() {
+          try {
+            const code = source.textContent.trim();
+            if (!code) {
+              label.textContent = "Empty graph";
+              return;
+            }
+            const id =
+              "diagram-" +
+              Date.now() +
+              "-" +
+              Math.random().toString(36).slice(2, 8);
+            const { svg } = await mermaid.render(id, code);
+            canvas.innerHTML = svg;
+            const svgNode = canvas.querySelector("svg");
+            if (!svgNode) {
+              label.textContent = "No SVG";
+              return;
+            }
+            const size = readSvgNaturalSize(svgNode);
+            svgW = size.w;
+            svgH = size.h;
+            svgNode.removeAttribute("width");
+            svgNode.removeAttribute("height");
+            svgNode.style.maxWidth = "none";
+            svgNode.style.display = "block";
+            setAdaptiveHeight();
+            fitDiagram();
+          } catch (err) {
+            console.error(err);
+            label.textContent = "Error: " + (err.message || "render failed");
+          }
+        }
 
-  wrap.querySelector('[data-action="zoom-in"]')?.addEventListener("click", () =>
-    zoomAround(1 + config.zoomStep, viewport.clientWidth / 2, viewport.clientHeight / 2));
-  wrap.querySelector('[data-action="zoom-out"]')?.addEventListener("click", () =>
-    zoomAround(1 / (1 + config.zoomStep), viewport.clientWidth / 2, viewport.clientHeight / 2));
-  wrap.querySelector('[data-action="zoom-fit"]')?.addEventListener("click", fitDiagram);
-  wrap.querySelector('[data-action="zoom-one"]')?.addEventListener("click", setOneToOne);
-  wrap.querySelector('[data-action="zoom-expand"]')?.addEventListener("click", openInNewTab);
-  viewport.addEventListener("dblclick", fitDiagram);
-  viewport.addEventListener("wheel", (e) => {
-    if (e.ctrlKey || e.metaKey) {
-      e.preventDefault();
-      const rect = viewport.getBoundingClientRect();
-      const factor = e.deltaY < 0 ? 1 + config.zoomStep : 1 / (1 + config.zoomStep);
-      zoomAround(factor, e.clientX - rect.left, e.clientY - rect.top);
-      return;
-    }
-    if (canPan()) { e.preventDefault(); panX -= e.deltaX; panY -= e.deltaY; applyTransform(); }
-  }, { passive: false });
-  viewport.addEventListener("mousedown", (e) => {
-    if (e.target.closest(".zoom-controls") || !canPan()) return;
-    wrap.classList.add("is-panning");
-    sx = e.clientX; sy = e.clientY; spx = panX; spy = panY;
-    e.preventDefault();
-    activeDrag = {
-      onMove: (ev) => { panX = spx + (ev.clientX - sx); panY = spy + (ev.clientY - sy); applyTransform(); },
-      onEnd: () => wrap.classList.remove("is-panning")
-    };
-  });
-  new ResizeObserver(() => { if (svgW) { setAdaptiveHeight(); fitDiagram(); } }).observe(wrap);
-  renderGraph = renderOnce;
-  mermaidReady = true;
-  renderOnce();
-}
-
-const graphShell = document.getElementById("graphShell");
-if (graphShell) initDiagram(graphShell);
-
-(function tocSpy() {
-  const toc = document.getElementById("toc");
-  const links = [...toc.querySelectorAll("a")];
-  const sections = links.map((link) => {
-    const el = document.getElementById(link.getAttribute("href").slice(1));
-    return el ? { el, link } : null;
-  }).filter(Boolean);
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (!entry.isIntersecting) return;
-      links.forEach((l) => l.classList.remove("active"));
-      const match = sections.find((s) => s.el === entry.target);
-      if (match) {
-        match.link.classList.add("active");
-        if (innerWidth <= 1000) match.link.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+        wrap
+          .querySelector('[data-action="zoom-in"]')
+          ?.addEventListener("click", () =>
+            zoomAround(
+              1 + config.zoomStep,
+              viewport.clientWidth / 2,
+              viewport.clientHeight / 2,
+            ),
+          );
+        wrap
+          .querySelector('[data-action="zoom-out"]')
+          ?.addEventListener("click", () =>
+            zoomAround(
+              1 / (1 + config.zoomStep),
+              viewport.clientWidth / 2,
+              viewport.clientHeight / 2,
+            ),
+          );
+        wrap
+          .querySelector('[data-action="zoom-fit"]')
+          ?.addEventListener("click", fitDiagram);
+        wrap
+          .querySelector('[data-action="zoom-one"]')
+          ?.addEventListener("click", setOneToOne);
+        wrap
+          .querySelector('[data-action="zoom-expand"]')
+          ?.addEventListener("click", openInNewTab);
+        viewport.addEventListener("dblclick", fitDiagram);
+        viewport.addEventListener(
+          "wheel",
+          (e) => {
+            if (e.ctrlKey || e.metaKey) {
+              e.preventDefault();
+              const rect = viewport.getBoundingClientRect();
+              const factor =
+                e.deltaY < 0 ? 1 + config.zoomStep : 1 / (1 + config.zoomStep);
+              zoomAround(factor, e.clientX - rect.left, e.clientY - rect.top);
+              return;
+            }
+            if (canPan()) {
+              e.preventDefault();
+              panX -= e.deltaX;
+              panY -= e.deltaY;
+              applyTransform();
+            }
+          },
+          { passive: false },
+        );
+        viewport.addEventListener("mousedown", (e) => {
+          if (e.target.closest(".zoom-controls") || !canPan()) return;
+          wrap.classList.add("is-panning");
+          sx = e.clientX;
+          sy = e.clientY;
+          spx = panX;
+          spy = panY;
+          e.preventDefault();
+          activeDrag = {
+            onMove: (ev) => {
+              panX = spx + (ev.clientX - sx);
+              panY = spy + (ev.clientY - sy);
+              applyTransform();
+            },
+            onEnd: () => wrap.classList.remove("is-panning"),
+          };
+        });
+        new ResizeObserver(() => {
+          if (svgW) {
+            setAdaptiveHeight();
+            fitDiagram();
+          }
+        }).observe(wrap);
+        renderGraph = renderOnce;
+        mermaidReady = true;
+        renderOnce();
       }
-    });
-  }, { rootMargin: "-10% 0px -80% 0px" });
-  sections.forEach((s) => observer.observe(s.el));
-  links.forEach((link) => {
-    link.addEventListener("click", (e) => {
-      e.preventDefault();
-      const el = document.getElementById(link.getAttribute("href").slice(1));
-      if (el) { el.scrollIntoView({ behavior: "smooth", block: "start" }); history.replaceState(null, "", link.getAttribute("href")); }
-    });
-  });
-})();
-</script>
-</body>
+
+      const graphShell = document.getElementById("graphShell");
+      if (graphShell) initDiagram(graphShell);
+
+      (function tocSpy() {
+        const toc = document.getElementById("toc");
+        const links = [...toc.querySelectorAll("a")];
+        const sections = links
+          .map((link) => {
+            const el = document.getElementById(
+              link.getAttribute("href").slice(1),
+            );
+            return el ? { el, link } : null;
+          })
+          .filter(Boolean);
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (!entry.isIntersecting) return;
+              links.forEach((l) => l.classList.remove("active"));
+              const match = sections.find((s) => s.el === entry.target);
+              if (match) {
+                match.link.classList.add("active");
+                if (innerWidth <= 1000)
+                  match.link.scrollIntoView({
+                    behavior: "smooth",
+                    block: "nearest",
+                    inline: "center",
+                  });
+              }
+            });
+          },
+          { rootMargin: "-10% 0px -80% 0px" },
+        );
+        sections.forEach((s) => observer.observe(s.el));
+        links.forEach((link) => {
+          link.addEventListener("click", (e) => {
+            e.preventDefault();
+            const el = document.getElementById(
+              link.getAttribute("href").slice(1),
+            );
+            if (el) {
+              el.scrollIntoView({ behavior: "smooth", block: "start" });
+              history.replaceState(null, "", link.getAttribute("href"));
+            }
+          });
+        });
+      })();
+    </script>
+  </body>
 </html>

@@ -79,13 +79,13 @@ The host does research and authoring; OpenWiki still owns the queue, Claim durab
 
 ## Why the old climb prompt is wrong now
 
-| Old (pre-0.4) | Now |
-|---|---|
-| One DeepAgent + `task` subagents | `task` stripped on code workers |
-| User message overrides “first pass” | Planner/page prompts are bounded tools |
-| `climb-log.md` score loop | `.run.json` + Claims grounding issues |
+| Old (pre-0.4)                         | Now                                         |
+| ------------------------------------- | ------------------------------------------- |
+| One DeepAgent + `task` subagents      | `task` stripped on code workers             |
+| User message overrides “first pass”   | Planner/page prompts are bounded tools      |
+| `climb-log.md` score loop             | `.run.json` + Claims grounding issues       |
 | Repeat `--update` with the same essay | Resume same mode; then Claims-driven update |
-| Bitbucket as evidence | Bitbucket = discovery; Claims = `repo://` |
+| Bitbucket as evidence                 | Bitbucket = discovery; Claims = `repo://`   |
 
 ## Bitbucket CI
 

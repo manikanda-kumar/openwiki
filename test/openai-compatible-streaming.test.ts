@@ -32,17 +32,16 @@ describe("openai-compatible streaming transport opt-in", () => {
 
     createModel("openai-compatible", "local-model", 3);
 
-    expect(chatOpenAiCalls[0]).not.toHaveProperty("streaming");
-    expect(chatOpenAiCalls[0]).toEqual(
-      expect.objectContaining({
-        timeout: 1_800_000,
-        configuration: expect.objectContaining({
-          fetchOptions: expect.objectContaining({
-            dispatcher: expect.any(Object),
-          }),
-        }),
-      }),
-    );
+    const [call] = chatOpenAiCalls as [
+      {
+        configuration: { fetchOptions: { dispatcher: unknown } };
+        timeout: number;
+      },
+    ];
+
+    expect(call).not.toHaveProperty("streaming");
+    expect(call.timeout).toBe(1_800_000);
+    expect(call.configuration.fetchOptions.dispatcher).toBeInstanceOf(Object);
   });
 
   test("forces the streaming transport when opted in", async () => {
