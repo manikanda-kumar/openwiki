@@ -17,20 +17,32 @@ describe("openai-compatible streaming transport opt-in", () => {
   beforeEach(() => {
     chatOpenAiCalls.length = 0;
     delete process.env.OPENWIKI_OPENAI_COMPATIBLE_STREAMING;
+    process.env.OPENAI_COMPATIBLE_BASE_URL = "https://example.test/v1";
   });
 
   // Cleared on the way out too, so the opt-in cannot leak into later test files
   // if worker isolation is ever turned off.
   afterEach(() => {
     delete process.env.OPENWIKI_OPENAI_COMPATIBLE_STREAMING;
+    delete process.env.OPENAI_COMPATIBLE_BASE_URL;
   });
 
-  test("leaves the transport at the LangChain default by default", async () => {
+  test("configures long non-streaming requests by default", async () => {
     const { createModel } = await import("../src/agent/index.ts");
 
     createModel("openai-compatible", "local-model", 3);
 
     expect(chatOpenAiCalls[0]).not.toHaveProperty("streaming");
+    expect(chatOpenAiCalls[0]).toEqual(
+      expect.objectContaining({
+        timeout: 1_800_000,
+        configuration: expect.objectContaining({
+          fetchOptions: expect.objectContaining({
+            dispatcher: expect.any(Object),
+          }),
+        }),
+      }),
+    );
   });
 
   test("forces the streaming transport when opted in", async () => {

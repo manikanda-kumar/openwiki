@@ -12,6 +12,7 @@ import { ChatOpenRouter } from "@langchain/openrouter";
 import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import type { Event as ProtocolEvent } from "@langchain/protocol";
 import { createDeepAgent } from "deepagents";
+import { Agent as UndiciAgent } from "undici";
 import { createOpenWikiConnectorTools } from "../connectors/tools.js";
 import {
   DEBUG_ENV_KEYS,
@@ -158,6 +159,12 @@ export {
   CONVERSATION_HISTORY_MOUNT,
   createAgentBackend,
 };
+
+const OPENAI_COMPATIBLE_REQUEST_TIMEOUT_MS = 30 * 60 * 1_000;
+const OPENAI_COMPATIBLE_DISPATCHER = new UndiciAgent({
+  headersTimeout: OPENAI_COMPATIBLE_REQUEST_TIMEOUT_MS,
+  bodyTimeout: OPENAI_COMPATIBLE_REQUEST_TIMEOUT_MS,
+});
 
 export async function runOpenWikiAgent(
   command: OpenWikiCommand,
@@ -1336,16 +1343,30 @@ export function createModel(
   }
 
   const baseURL = resolveProviderBaseUrl(provider);
+  const openAiCompatibleTimeoutOptions =
+    provider === "openai-compatible"
+      ? {
+          timeout: OPENAI_COMPATIBLE_REQUEST_TIMEOUT_MS,
+        }
+      : {};
 
   return new ChatOpenAI({
     apiKey: getProviderApiKey(provider),
     configuration: baseURL
       ? {
           baseURL,
+          ...(provider === "openai-compatible"
+            ? {
+                fetchOptions: {
+                  dispatcher: OPENAI_COMPATIBLE_DISPATCHER,
+                },
+              }
+            : {}),
         }
       : undefined,
     model: modelId,
     useResponsesApi: providerUsesResponsesApi(provider, modelId),
+    ...openAiCompatibleTimeoutOptions,
     ...maxTokensOptions,
     ...responsesReasoningOptions,
     ...chatCompletionsReasoningOptions,
