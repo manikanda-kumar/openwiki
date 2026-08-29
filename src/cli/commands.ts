@@ -129,6 +129,12 @@ export type CliCommand =
       exportDir: string | null;
     }
   | {
+      kind: "map";
+      exitCode: 0;
+      wikiDir: string;
+      outputFile: string | null;
+    }
+  | {
       kind: "ingest";
       exitCode: 0;
       modelId: string | null;
@@ -399,6 +405,58 @@ export function parseCommand(argv: string[]): CliCommand {
     }
 
     return { kind: "visualize", exitCode: 0, wikiDir, port, open, exportDir };
+  }
+
+  if (argv[0] === "map") {
+    let wikiDir = "openwiki";
+    let outputFile: string | null = null;
+    let sawPositional = false;
+    const optionArgs = argv.slice(1);
+
+    for (let index = 0; index < optionArgs.length; index += 1) {
+      const arg = optionArgs[index];
+
+      if (arg === "--output") {
+        const value = optionArgs[index + 1];
+        if (!value || value.startsWith("-")) {
+          return {
+            kind: "error",
+            exitCode: 1,
+            message: "--output requires a file path.",
+          };
+        }
+        outputFile = value;
+        index += 1;
+        continue;
+      }
+
+      if (arg.startsWith("--output=")) {
+        const value = arg.slice("--output=".length);
+        if (!value) {
+          return {
+            kind: "error",
+            exitCode: 1,
+            message: "--output requires a file path.",
+          };
+        }
+        outputFile = value;
+        continue;
+      }
+
+      if (!arg.startsWith("-") && !sawPositional) {
+        wikiDir = arg;
+        sawPositional = true;
+        continue;
+      }
+
+      return {
+        kind: "error",
+        exitCode: 1,
+        message: `Unknown option for map: ${arg}`,
+      };
+    }
+
+    return { kind: "map", exitCode: 0, wikiDir, outputFile };
   }
 
   if (argv[0] === "ingest") {
@@ -1108,6 +1166,7 @@ export const helpContent: HelpContent = {
     "openwiki cron delete all",
     "openwiki ngrok start [url] [--port <port>]",
     "openwiki visualize [path] [--port <port>] [--no-open] [--export <dir>]",
+    "openwiki map [path] [--output <file>]",
     "openwiki integrations list [--project [path]]",
     `openwiki integrations install <${formatSupportedHostTargets("|")}> [--force] [--project [path]]`,
     `openwiki integrations uninstall <${formatSupportedHostTargets("|")}> [--project [path]]`,
@@ -1174,6 +1233,11 @@ export const helpContent: HelpContent = {
       label: "openwiki visualize [path] [--export <dir>]",
       description:
         "Serve a live graph and reader, or export a static graph for web hosting (defaults to ./openwiki).",
+    },
+    {
+      label: "openwiki map [path] [--output <file>]",
+      description:
+        "Write a standalone HTML table of contents for a generated wiki, linking to its markdown pages (defaults to ./openwiki/map.html).",
     },
     {
       label: "openwiki integrations list [--project [path]]",
@@ -1250,6 +1314,10 @@ export const helpContent: HelpContent = {
       description:
         "For visualize: write a static visualizer directory instead of starting the local server.",
     },
+    {
+      label: "--output <file>",
+      description: "For map: HTML file to write (default <wiki>/map.html).",
+    },
   ],
   developmentOptions: [
     {
@@ -1286,6 +1354,8 @@ export const helpContent: HelpContent = {
     "openwiki visualize",
     "openwiki visualize openwiki --port 4400 --no-open",
     "openwiki visualize openwiki --export docs/openwiki-visualizer",
+    "openwiki map",
+    "openwiki map openwiki --output docs/wiki-map.html",
     "openwiki integrations list",
     "openwiki integrations install codex",
     "openwiki integrations uninstall codex",

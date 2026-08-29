@@ -24,6 +24,7 @@ import {
   runIngestCommand,
   runNgrokCommand,
   runPrintCommand,
+  runMapCommand,
   runVisualizeCommand,
 } from "./runners.js";
 import { runIntegrationsCommand, runMcpCommand } from "./integrations.js";
@@ -87,6 +88,8 @@ async function runStandardCommand(
     await runIngestCommand(command);
   } else if (command.kind === "visualize") {
     await runVisualizeCommand(command);
+  } else if (command.kind === "map") {
+    await runMapCommand(command);
   } else if (shouldPrintStartupError(argv, parsedCommand, command)) {
     process.stderr.write(`${command.message}\n`);
     process.exitCode = command.exitCode;

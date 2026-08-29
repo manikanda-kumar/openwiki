@@ -59,6 +59,9 @@ vi.mock("../../src/telemetry/index.ts", () => ({
 vi.mock("../../src/visualize/server.ts", () => ({
   runVisualizeServer: vi.fn(),
 }));
+vi.mock("../../src/visualize/contents-map.ts", () => ({
+  exportContentsMap: vi.fn(),
+}));
 
 import {
   configureAuthProvider,
@@ -66,6 +69,7 @@ import {
   shouldDiscoverToolsAfterAuth,
 } from "../../src/auth/configure.ts";
 import { startNgrokTunnel } from "../../src/auth/ngrok.ts";
+import { exportContentsMap } from "../../src/visualize/contents-map.ts";
 import { runOAuthAuth } from "../../src/auth/oauth.ts";
 import { runOpenWikiAgent } from "../../src/agent/index.ts";
 import {
@@ -88,6 +92,7 @@ import {
   runIngestCommand,
   runNgrokCommand,
   runPrintCommand,
+  runMapCommand,
   runVisualizeCommand,
   writePrintAuthFix,
   writePrintErrorDiagnostics,
@@ -197,6 +202,56 @@ describe("runVisualizeCommand", () => {
 
     await runVisualizeCommand(
       makeCommand("visualize", { wikiDir: "wiki", port: 8080, open: false }),
+    );
+
+    expect(stderr.join("")).toContain("no wiki dir");
+    expect(process.exitCode).toBe(1);
+  });
+});
+
+describe("runMapCommand", () => {
+  test("defaults the output to map.html inside the wiki root", async () => {
+    vi.mocked(exportContentsMap).mockImplementation((options) =>
+      Promise.resolve({
+        outputFile: options.outputFile,
+        graph: { nodes: [], edges: [] },
+      } as never),
+    );
+
+    await runMapCommand(
+      makeCommand("map", { wikiDir: "wiki", outputFile: null }),
+    );
+
+    const call = vi.mocked(exportContentsMap).mock.calls[0][0];
+    expect(call.wikiRoot.startsWith("/")).toBe(true);
+    expect(call.wikiRoot).toMatch(/wiki$/u);
+    expect(call.outputFile).toBe(`${call.wikiRoot}/map.html`);
+    expect(stdout.join("")).toContain("Wrote wiki map to");
+    expect(process.exitCode).not.toBe(1);
+  });
+
+  test("resolves an explicit --output against cwd", async () => {
+    vi.mocked(exportContentsMap).mockImplementation((options) =>
+      Promise.resolve({
+        outputFile: options.outputFile,
+        graph: { nodes: [], edges: [] },
+      } as never),
+    );
+
+    await runMapCommand(
+      makeCommand("map", { wikiDir: "wiki", outputFile: "docs/map.html" }),
+    );
+
+    const call = vi.mocked(exportContentsMap).mock.calls[0][0];
+    expect(call.outputFile.startsWith("/")).toBe(true);
+    expect(call.outputFile).toMatch(/docs\/map\.html$/u);
+  });
+
+  test("reports the error and exits 1 when the export throws", async () => {
+    vi.mocked(exportContentsMap).mockRejectedValue(new Error("no wiki dir"));
+
+    await runMapCommand(
+      makeCommand("map", { wikiDir: "wiki", outputFile: null }),
     );
 
     expect(stderr.join("")).toContain("no wiki dir");

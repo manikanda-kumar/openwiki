@@ -31,6 +31,7 @@ import {
   type RunTelemetryContext,
 } from "../telemetry/index.js";
 import { exportStaticVisualizer } from "../visualize/static-export.js";
+import { exportContentsMap } from "../visualize/contents-map.js";
 import { runVisualizeServer } from "../visualize/server.js";
 import type { CliCommand } from "./commands.js";
 import { isDebugMode } from "./debug.js";
@@ -84,6 +85,27 @@ export async function runVisualizeCommand(
       port: command.port,
       open: command.open,
     });
+  } catch (error) {
+    process.stderr.write(`${getErrorMessage(error)}\n`);
+    process.exitCode = 1;
+  }
+}
+
+/**
+ * Write the standalone HTML contents map for a generated wiki.
+ */
+export async function runMapCommand(
+  command: Extract<CliCommand, { kind: "map" }>,
+): Promise<void> {
+  const wikiRoot = path.resolve(process.cwd(), command.wikiDir);
+  const outputFile = command.outputFile
+    ? path.resolve(process.cwd(), command.outputFile)
+    : path.join(wikiRoot, "map.html");
+  try {
+    const result = await exportContentsMap({ wikiRoot, outputFile });
+    process.stdout.write(
+      `Wrote wiki map to ${result.outputFile} (${result.graph.nodes.length} pages, ${result.graph.edges.length} links).\n`,
+    );
   } catch (error) {
     process.stderr.write(`${getErrorMessage(error)}\n`);
     process.exitCode = 1;

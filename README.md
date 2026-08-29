@@ -210,6 +210,22 @@ The export contains `index.html`, `client.js`, `client-lib.js`, `styles.css`, an
 > [!NOTE]
 > The page loads its graph, Markdown, and diagram libraries from a public CDN, so an internet connection is required for both local and static viewers.
 
+### Map of contents
+
+For a plain map of the wiki that lives next to the Markdown it describes, generate one HTML page instead:
+
+```sh
+openwiki map
+```
+
+This reads `./openwiki` and writes `./openwiki/map.html`: every page grouped by section, with its type, description, tags, reading time, backlink count, and outgoing links, plus a client-side filter. Each title links to the Markdown source, so the file works as the wiki's table of contents whether it is opened from disk, served statically, or browsed on a git host. Pass a path to map a different wiki and `--output <file>` to write elsewhere:
+
+```sh
+openwiki map openwiki --output docs/wiki-map.html
+```
+
+The output is a single self-contained file: styles and script are inlined and nothing is fetched at runtime, so it needs no assets beside it and works offline. Unlike `visualize`, it starts no server; rerun the command to refresh it after a wiki update.
+
 ## Connect your sources
 
 In `personal` mode, OpenWiki ingests knowledge from the tools you already use, synthesizing them into your local wiki. First-run onboarding offers setup for **Custom MCP, local git repositories, Notion, Gmail, X/Twitter, Web Search, and Hacker News**. Slack is also available with its OAuth app and HTTPS callback configured.
@@ -536,6 +552,7 @@ openwiki --init                  # initialize code docs (personal: openwiki pers
 openwiki --update                # update code docs (personal: openwiki personal --update)
 openwiki visualize               # interactive graph + live reader
 openwiki visualize openwiki --export docs/openwiki-visualizer  # static graph + reader
+openwiki map                     # standalone HTML map of contents
 openwiki auth <provider>         # authenticate a connector (slack, gmail, x, notion)
 openwiki ingest <source>         # run connector ingestion (all, or a connector/instance)
 openwiki integrations list       # show installed coding-agent integrations
