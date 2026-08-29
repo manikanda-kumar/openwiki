@@ -1,6 +1,6 @@
 ---
 type: integration guide
-title: Coding-Agent Integrations (Codex/Claude/OpenCode/Grok)
+title: Coding-Agent Integrations (Codex/Claude/OpenCode/Grok/Antigravity)
 description: How OpenWiki runs inside a host coding agent through the five-operation MCP page-job protocol, how install writes host config and the shared skill bundle, and the divided ownership between host research and OpenWiki finalization.
 tags: [integrations, mcp, coding-agents, installation, page-job, host]
 verified:
@@ -46,9 +46,9 @@ sources:
 generated: { by: "openwiki/0.3.3", at: "2026-08-25T02:14:25.283Z" }
 ---
 
-# Coding-Agent Integrations (Codex/Claude/OpenCode/Grok)
+# Coding-Agent Integrations (Codex/Claude/OpenCode/Grok/Antigravity)
 
-OpenWiki can run _inside_ a host coding agent (Codex, Claude Code, OpenCode, or Grok)
+OpenWiki can run _inside_ a host coding agent (Codex, Claude Code, OpenCode, Grok, or Antigravity)
 instead of as a standalone process. The host agent supplies the model, native
 repository tools, and Markdown authoring; OpenWiki supplies a deterministic,
 resumable **page-job lifecycle** over the Model Context Protocol (MCP). The two
@@ -202,6 +202,10 @@ actor, per-scope skill directory and MCP config, and a documentation URL:
 - **Grok** — `.grok/config.toml` (`codex-toml`; Grok reads the same
   `[mcp_servers.<name>]` table shape as Codex), skill under
   `.grok/skills/openwiki`, at both user and project scope.
+- **Antigravity** — `.gemini/config/mcp_config.json` (`json`), skill under
+  `.gemini/config/skills/openwiki`, **user scope only** (`project` is `null`):
+  the Antigravity CLI reads MCP servers from one global config, so a
+  repository-local entry would never load.
 
 `defaultMcpServerCommand(target)` produces the published invocation
 `openwiki mcp --host <target>`, which is what installed configs launch.
@@ -254,13 +258,17 @@ requested scope does not exist for the host.
 
 ## User-level vs project scope
 
-Every host supports **project** scope; user scope is optional (`user` may be
-`null` in the registry, though all three current hosts support both). For
+Scope support is per host and either side may be `null` in the registry:
+Codex, Claude Code, OpenCode, and Grok support both, while Antigravity is
+user-only. `resolveInstallContext` rejects an unsupported scope with an
+`invalid_input` error naming the scope the host does support, and `status`
+reports `unsupported` rather than a missing installation. For
 **project** scope the installer resolves the root through the same
 `resolveRepositoryRoot` used by runs, so a project install always lands at the
 Git worktree root; for **user** scope it anchors at the home directory. When a
 host does not support the requested scope, `resolveInstallContext` raises an
-`invalid_input` error directing the user to re-run with `--project`.
+`invalid_input` error directing the user to re-run with or without `--project`,
+whichever that host supports.
 
 ## Contributing a new host
 

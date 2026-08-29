@@ -31,6 +31,7 @@ import {
   listHostTargets,
 } from "../../src/integrations/install/registry.ts";
 import type {
+  HostInstallationPaths,
   HostIntegrationScope,
   HostTarget,
   InstallOptions,
@@ -40,6 +41,9 @@ import { OPENWIKI_VERSION } from "../../src/version.ts";
 const RECEIPT_FILE = ".openwiki-install.json";
 const CONFIG_SENTINEL = "UNRELATED_CONFIG_SENTINEL";
 const TARGETS = listHostTargets();
+const PROJECT_TARGETS = TARGETS.filter((target) => target.project !== null);
+const USER_ONLY_TARGETS = TARGETS.filter((target) => target.project === null);
+const USER_TARGETS = TARGETS.filter((target) => target.user !== null);
 const temporaryRoots: string[] = [];
 
 /**
@@ -64,6 +68,18 @@ async function createDirectory(): Promise<string> {
   );
   temporaryRoots.push(root);
   return root;
+}
+
+/**
+ * Resolves a target's project destinations for project-scoped assertions.
+ *
+ * @param target - Registry target expected to support project scope.
+ * @returns Project-scoped destinations.
+ */
+function requireProject(target: HostTarget): HostInstallationPaths {
+  const destinations = target.project;
+  if (!destinations) throw new Error(`${target.id} does not support project.`);
+  return destinations;
 }
 
 /**
@@ -129,7 +145,7 @@ function userOptions(root: string): InstallOptions {
 async function seedConfig(root: string, target: HostTarget): Promise<void> {
   const destination = configPath(root, target);
   await mkdir(path.dirname(destination), { recursive: true });
-  const kind = target.project.mcpConfig.kind;
+  const kind = requireProject(target).mcpConfig.kind;
   const content =
     kind === "json"
       ? `${JSON.stringify({
@@ -161,7 +177,7 @@ async function expectManagedConfig(
 ): Promise<void> {
   const content = await readFile(configPath(root, target), "utf8");
   expect(content).toContain(CONFIG_SENTINEL);
-  const kind = target.project.mcpConfig.kind;
+  const kind = requireProject(target).mcpConfig.kind;
   if (kind === "json") {
     expect(JSON.parse(content)).toMatchObject({
       mcpServers: {
@@ -328,9 +344,9 @@ async function writeMalformedConfig(
 ): Promise<string> {
   const destination = configPath(root, target);
   const content =
-    target.project.mcpConfig.kind === "json"
+    requireProject(target).mcpConfig.kind === "json"
       ? "{ malformed json\n"
-      : target.project.mcpConfig.kind === "opencode-json"
+      : requireProject(target).mcpConfig.kind === "opencode-json"
         ? "{ malformed jsonc\n"
         : "# OPENWIKI:MCP:START\n";
   await mkdir(path.dirname(destination), { recursive: true });
@@ -350,7 +366,7 @@ async function modifyManagedConfig(
 ): Promise<void> {
   const destination = configPath(root, target);
   const content = await readFile(destination, "utf8");
-  const kind = target.project.mcpConfig.kind;
+  const kind = requireProject(target).mcpConfig.kind;
   if (kind === "json") {
     const parsed: unknown = JSON.parse(content);
     if (!isRecord(parsed) || !isRecord(parsed.mcpServers)) {
@@ -450,6 +466,17 @@ describe("host integration registry", () => {
           },
         },
       },
+      antigravity: {
+        producerActor: "antigravity",
+        user: {
+          skillDirectory: ".gemini/config/skills/openwiki",
+          mcpConfig: {
+            kind: "json",
+            relativePath: ".gemini/config/mcp_config.json",
+          },
+        },
+        project: null,
+      },
     });
     expect(getHostTarget("codex")).toBe(HOST_TARGETS.codex);
     expect(getHostTarget("unsupported")).toBeUndefined();
@@ -458,6 +485,7 @@ describe("host integration registry", () => {
       "claude",
       "opencode",
       "grok",
+      "antigravity",
     ]);
     const userTargets = TARGETS.filter((target) => target.user !== null);
     expect(
@@ -466,7 +494,61 @@ describe("host integration registry", () => {
   });
 });
 
-describe.each(TARGETS)("$displayName host integration", (target) => {
+describe.each(USER_ONLY_TARGETS)(
+  "$displayName unsupported project scope",
+  (target) => {
+    test("refuses project installs without writing files", async () => {
+      const root = await createProject();
+      const installer = new HostIntegrationInstaller();
+      const options = projectOptions(root);
+
+      await expect(installer.status(target, options)).resolves.toBe(
+        "unsupported",
+      );
+      await expect(installer.install(target, options)).rejects.toMatchObject({
+        code: "invalid_input",
+        message: `${target.displayName} supports user-scoped integrations only. Re-run without --project.`,
+      });
+      await expect(installer.uninstall(target, options)).rejects.toMatchObject({
+        code: "invalid_input",
+      });
+      await expect(readdir(root)).resolves.toEqual([".git"]);
+    });
+  },
+);
+
+describe.each(USER_TARGETS)("$displayName user scope", (target) => {
+  test("installs, reinstalls, and uninstalls at user scope", async () => {
+    const fakeHome = await createProject();
+    const installer = new HostIntegrationInstaller();
+    const options = userOptions(fakeHome);
+
+    await expect(installer.status(target, options)).resolves.toBe(
+      "not-installed",
+    );
+    await expect(installer.install(target, options)).resolves.toEqual({
+      target: target.id,
+      scope: "user",
+      skillDirectory: skillPath(fakeHome, target, "user"),
+      mcpConfig: configPath(fakeHome, target, "user"),
+      changed: true,
+    });
+    await expect(installer.status(target, options)).resolves.toBe("installed");
+    await expect(installer.install(target, options)).resolves.toMatchObject({
+      scope: "user",
+      changed: false,
+    });
+    await expect(installer.uninstall(target, options)).resolves.toMatchObject({
+      scope: "user",
+      changed: true,
+    });
+    await expect(installer.status(target, options)).resolves.toBe(
+      "not-installed",
+    );
+  });
+});
+
+describe.each(PROJECT_TARGETS)("$displayName host integration", (target) => {
   test("rejects an empty MCP executable before writing files", async () => {
     const root = await createProject();
     const installer = new HostIntegrationInstaller();
@@ -507,35 +589,6 @@ describe.each(TARGETS)("$displayName host integration", (target) => {
       code: "conflict",
     });
     await expect(access(skillPath(root, target))).resolves.toBeUndefined();
-  });
-
-  test("supports user scope", async () => {
-    const fakeHome = await createProject();
-    const installer = new HostIntegrationInstaller();
-    const options = userOptions(fakeHome);
-
-    await expect(installer.status(target, options)).resolves.toBe(
-      "not-installed",
-    );
-    await expect(installer.install(target, options)).resolves.toEqual({
-      target: target.id,
-      scope: "user",
-      skillDirectory: skillPath(fakeHome, target, "user"),
-      mcpConfig: configPath(fakeHome, target, "user"),
-      changed: true,
-    });
-    await expect(installer.status(target, options)).resolves.toBe("installed");
-    await expect(installer.install(target, options)).resolves.toMatchObject({
-      scope: "user",
-      changed: false,
-    });
-    await expect(installer.uninstall(target, options)).resolves.toMatchObject({
-      scope: "user",
-      changed: true,
-    });
-    await expect(installer.status(target, options)).resolves.toBe(
-      "not-installed",
-    );
   });
 
   test("installs exact bytes, preserves config, is idempotent, and uninstalls", async () => {
@@ -594,7 +647,7 @@ describe.each(TARGETS)("$displayName host integration", (target) => {
     expect(remainingConfig).not.toContain("openwiki");
     const protectedDirectory = path.join(
       root,
-      target.project.skillDirectory.split("/", 1)[0] ?? "",
+      requireProject(target).skillDirectory.split("/", 1)[0] ?? "",
     );
     expect((await lstat(protectedDirectory)).isDirectory()).toBe(true);
   });
@@ -617,7 +670,7 @@ describe.each(TARGETS)("$displayName host integration", (target) => {
     ).resolves.toMatchObject({ changed: true });
 
     const content = await readFile(configPath(root, target), "utf8");
-    const kind = target.project.mcpConfig.kind;
+    const kind = requireProject(target).mcpConfig.kind;
     if (kind === "json") {
       expect(JSON.parse(content)).toMatchObject({
         mcpServers: { openwiki: localCommand },
@@ -882,7 +935,8 @@ describe.each(TARGETS)("$displayName host integration", (target) => {
   test("rejects symlinked destination components", async () => {
     const root = await createProject();
     const outside = await createDirectory();
-    const topLevel = target.project.skillDirectory.split("/", 1)[0] ?? "";
+    const topLevel =
+      requireProject(target).skillDirectory.split("/", 1)[0] ?? "";
     await symlink(outside, path.join(root, topLevel));
     const installer = new HostIntegrationInstaller();
 
@@ -915,7 +969,7 @@ describe("host integration scope ownership", () => {
 });
 
 describe("project integration root resolution", () => {
-  test.each(TARGETS)(
+  test.each(PROJECT_TARGETS)(
     "$displayName installs from a subdirectory at the Git repository root",
     async (target) => {
       const root = await createProject();
@@ -929,7 +983,7 @@ describe("project integration root resolution", () => {
       expect(result.mcpConfig).toBe(configPath(root, target));
       await access(skillPath(root, target));
       await expect(
-        access(path.join(nested, target.project.skillDirectory)),
+        access(path.join(nested, target.project?.skillDirectory ?? "")),
       ).rejects.toThrow();
     },
   );

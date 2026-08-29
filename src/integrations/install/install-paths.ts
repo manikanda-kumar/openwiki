@@ -79,9 +79,11 @@ export async function resolveInstallContext(
 ): Promise<InstallContext> {
   const destinations = target[scope];
   if (!destinations) {
+    const supported = scope === "user" ? "project" : "user";
+    const remedy = scope === "user" ? "with --project" : "without --project";
     throw new HostIntegrationError(
       "invalid_input",
-      `${target.displayName} supports project-scoped integrations only. Re-run with --project.`,
+      `${target.displayName} supports ${supported}-scoped integrations only. Re-run ${remedy}.`,
     );
   }
   const root =

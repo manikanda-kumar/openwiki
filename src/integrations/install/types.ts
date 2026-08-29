@@ -1,7 +1,8 @@
 /**
  * Supported host identifiers used by CLI parsing and installation.
  */
-export type HostTargetId = "codex" | "claude" | "opencode" | "grok";
+export type HostTargetId =
+  "codex" | "claude" | "opencode" | "grok" | "antigravity";
 
 /**
  * Current managed installation states exposed to callers.
@@ -86,7 +87,7 @@ export interface HostTarget {
   /**
    * Project-level destinations relative to the target repository.
    */
-  readonly project: HostInstallationPaths;
+  readonly project: HostInstallationPaths | null;
 
   /**
    * Public setup documentation for the host's MCP support.

@@ -37,7 +37,7 @@ typechecks, builds, and runs the Vitest suite with coverage.
 Install an integration backed by the current checkout with:
 
 ```sh
-pnpm integrations:dev <codex|claude|opencode|grok>
+pnpm integrations:dev <codex|claude|opencode|grok|antigravity>
 ```
 
 The command builds OpenWiki, refreshes the host skill, and records absolute

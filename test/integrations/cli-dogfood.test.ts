@@ -87,7 +87,8 @@ describe("host integration CLI dogfood", () => {
       "codex\tinstalled\tCodex\n" +
         "claude\tnot-installed\tClaude Code\n" +
         "opencode\tnot-installed\tOpenCode\n" +
-        "grok\tnot-installed\tGrok\n",
+        "grok\tnot-installed\tGrok\n" +
+        "antigravity\tunsupported\tAntigravity\n",
     );
 
     stdout = [];
@@ -132,7 +133,7 @@ describe("host integration CLI dogfood", () => {
     expect(stderr.join("")).toBe("");
   });
 
-  test.each(listHostTargets())(
+  test.each(listHostTargets().filter((target) => target.project !== null))(
     "$displayName reports, repairs, and uninstalls partial states",
     async (target) => {
       await install(target);

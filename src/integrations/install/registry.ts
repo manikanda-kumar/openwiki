@@ -82,6 +82,20 @@ export const HOST_TARGETS = {
     },
     documentationUrl: "https://docs.x.ai/build/features/mcp-servers",
   },
+  antigravity: {
+    id: "antigravity",
+    displayName: "Antigravity",
+    producerActor: "antigravity",
+    user: {
+      skillDirectory: ".gemini/config/skills/openwiki",
+      mcpConfig: {
+        kind: "json",
+        relativePath: ".gemini/config/mcp_config.json",
+      },
+    },
+    project: null,
+    documentationUrl: "https://antigravity.google/docs/mcp",
+  },
 } as const satisfies Record<HostTargetId, HostTarget>;
 
 /**
