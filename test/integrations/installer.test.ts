@@ -433,6 +433,23 @@ describe("host integration registry", () => {
           },
         },
       },
+      grok: {
+        producerActor: "grok",
+        user: {
+          skillDirectory: ".grok/skills/openwiki",
+          mcpConfig: {
+            kind: "codex-toml",
+            relativePath: ".grok/config.toml",
+          },
+        },
+        project: {
+          skillDirectory: ".grok/skills/openwiki",
+          mcpConfig: {
+            kind: "codex-toml",
+            relativePath: ".grok/config.toml",
+          },
+        },
+      },
     });
     expect(getHostTarget("codex")).toBe(HOST_TARGETS.codex);
     expect(getHostTarget("unsupported")).toBeUndefined();
@@ -440,6 +457,7 @@ describe("host integration registry", () => {
       "codex",
       "claude",
       "opencode",
+      "grok",
     ]);
     const userTargets = TARGETS.filter((target) => target.user !== null);
     expect(

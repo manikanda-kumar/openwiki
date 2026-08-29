@@ -1,6 +1,6 @@
 ---
 type: integration guide
-title: Coding-Agent Integrations (Codex/Claude/OpenCode)
+title: Coding-Agent Integrations (Codex/Claude/OpenCode/Grok)
 description: How OpenWiki runs inside a host coding agent through the five-operation MCP page-job protocol, how install writes host config and the shared skill bundle, and the divided ownership between host research and OpenWiki finalization.
 tags: [integrations, mcp, coding-agents, installation, page-job, host]
 verified:
@@ -46,9 +46,9 @@ sources:
 generated: { by: "openwiki/0.3.3", at: "2026-08-25T02:14:25.283Z" }
 ---
 
-# Coding-Agent Integrations (Codex/Claude/OpenCode)
+# Coding-Agent Integrations (Codex/Claude/OpenCode/Grok)
 
-OpenWiki can run _inside_ a host coding agent (Codex, Claude Code, or OpenCode)
+OpenWiki can run _inside_ a host coding agent (Codex, Claude Code, OpenCode, or Grok)
 instead of as a standalone process. The host agent supplies the model, native
 repository tools, and Markdown authoring; OpenWiki supplies a deterministic,
 resumable **page-job lifecycle** over the Model Context Protocol (MCP). The two
@@ -199,6 +199,9 @@ actor, per-scope skill directory and MCP config, and a documentation URL:
 - **OpenCode** — user config `.config/opencode/opencode.jsonc` and project config
   `opencode.jsonc` (both `opencode-json`), with distinct user/project skill
   directories (`.config/opencode/...` vs `.opencode/...`).
+- **Grok** — `.grok/config.toml` (`codex-toml`; Grok reads the same
+  `[mcp_servers.<name>]` table shape as Codex), skill under
+  `.grok/skills/openwiki`, at both user and project scope.
 
 `defaultMcpServerCommand(target)` produces the published invocation
 `openwiki mcp --host <target>`, which is what installed configs launch.

@@ -62,6 +62,26 @@ export const HOST_TARGETS = {
     },
     documentationUrl: "https://opencode.ai/docs/mcp-servers/",
   },
+  grok: {
+    id: "grok",
+    displayName: "Grok",
+    producerActor: "grok",
+    user: {
+      skillDirectory: ".grok/skills/openwiki",
+      mcpConfig: {
+        kind: "codex-toml",
+        relativePath: ".grok/config.toml",
+      },
+    },
+    project: {
+      skillDirectory: ".grok/skills/openwiki",
+      mcpConfig: {
+        kind: "codex-toml",
+        relativePath: ".grok/config.toml",
+      },
+    },
+    documentationUrl: "https://docs.x.ai/build/features/mcp-servers",
+  },
 } as const satisfies Record<HostTargetId, HostTarget>;
 
 /**

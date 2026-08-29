@@ -1,7 +1,7 @@
 /**
  * Supported host identifiers used by CLI parsing and installation.
  */
-export type HostTargetId = "codex" | "claude" | "opencode";
+export type HostTargetId = "codex" | "claude" | "opencode" | "grok";
 
 /**
  * Current managed installation states exposed to callers.
