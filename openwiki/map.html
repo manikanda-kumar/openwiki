@@ -8,19 +8,19 @@
 <style>
 :root {
   color-scheme: light dark;
-  --bg: #f4f9fd;
-  --panel: #fbfdff;
-  --raised: #ffffff;
-  --edge: #d8e7f5;
-  --edge-soft: #e8f1fa;
-  --text: #3d5166;
-  --heading: #0b1220;
-  --muted: #5b7086;
+  --bg: #f2f7fc;
+  --panel: #fafcfe;
+  --raised: #fdfeff;
+  --edge: #d9e6f3;
+  --edge-soft: #e8f0f9;
+  --text: #3c5064;
+  --heading: #0a141f;
+  --muted: #5c7187;
   --accent: #1a6fb5;
   --accent-hover: #14568c;
-  --accent-soft: #e5f4ff;
+  --accent-soft: #e6f2fc;
   --ring: rgba(26, 111, 181, 0.35);
-  --shadow: 0 1px 2px rgba(11, 18, 32, 0.06);
+  --shadow: 0 1px 2px rgba(10, 20, 31, 0.05), 0 10px 28px -14px rgba(10, 20, 31, 0.14);
 }
 :root[data-theme="dark"] {
   --bg: #030710;
@@ -171,24 +171,182 @@ input.search::placeholder { color: var(--muted); }
   :root:not([data-theme="light"]) .icon-moon { display: block; }
 }
 
-/* Header line: the wiki in one sentence, not a wall of stat tiles. */
-.intro {
-  padding: 22px 28px 18px;
+/* Hero: the front page. Name, one-line summary, stats, and the color legend. */
+.hero {
+  padding: 60px 28px 42px;
   border-bottom: 1px solid var(--edge);
-  background: var(--panel);
+  background:
+    radial-gradient(58% 130% at 10% 0%, color-mix(in srgb, var(--accent) 6%, transparent), transparent 72%),
+    var(--panel);
 }
-.intro h1 {
-  margin: 0 0 5px;
-  font-size: 19px;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+.hero-inner, .layout, .front-inner { max-width: 1160px; margin: 0 auto; }
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 0 0 14px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
   color: var(--muted);
 }
-.intro h1 strong { color: var(--heading); font-weight: 700; }
-.intro p { margin: 0; font-size: 13px; color: var(--muted); max-width: 68ch; }
-.intro strong { color: var(--text); font-weight: 600; }
+.eyebrow::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+.hero h1 {
+  margin: 0 0 10px;
+  font-size: 34px;
+  font-weight: 750;
+  letter-spacing: -0.022em;
+  line-height: 1.12;
+  color: var(--heading);
+  max-width: 24ch;
+}
+.hero .tagline { margin: 0 0 18px; font-size: 15.5px; line-height: 1.55; color: var(--muted); max-width: 62ch; text-wrap: pretty; }
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 20px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.hero-meta strong { color: var(--heading); font-weight: 650; font-variant-numeric: tabular-nums; }
+.hero-meta .sep { opacity: 0.45; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 2px; }
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  color: var(--text);
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: 100px;
+  padding: 3px 11px 3px 8px;
+}
+.legend-chip .dot { width: 7px; height: 7px; }
 
-.layout { display: flex; align-items: flex-start; gap: 40px; padding: 28px 28px 72px; }
+/* Front bands (entry points, section directory): hidden while filtering. */
+.front { border-bottom: 1px solid var(--edge); }
+body[data-filtered="true"] .front { display: none; }
+.front-block { padding: 34px 0 6px; }
+.front-block:last-child { padding-bottom: 40px; }
+.front-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.front-head .n { letter-spacing: 0; font-weight: 500; }
+
+/* Entry points: the root pages, promoted so a new reader knows where to start. */
+.entries { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+a.entry {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 16px 40px 16px 18px;
+  background: var(--raised);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  color: var(--text);
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+a.entry:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--edge));
+  box-shadow: var(--shadow);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+.entry-title { font-size: 15px; font-weight: 650; letter-spacing: -0.008em; color: var(--heading); }
+a.entry:hover .entry-title { color: var(--accent); }
+.entry-desc {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.entry .go {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  color: var(--muted);
+  opacity: 0;
+  transform: translateX(-3px);
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+a.entry:hover .go { opacity: 1; transform: translateX(0); color: var(--accent); }
+.entry .go svg { width: 15px; height: 15px; display: block; }
+
+/* Section directory: the map made visible, numbered cards with sample pages.
+   320px tracks bias to three columns at the 1160px container, so the rows
+   stay balanced instead of leaving orphan cards on a mostly empty row. */
+.directory { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 12px; }
+.dir-card {
+  display: flex;
+  flex-direction: column;
+  padding: 15px 16px 13px;
+  background: var(--panel);
+  border: 1px solid var(--edge);
+  border-radius: 12px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.dir-card:hover { border-color: color-mix(in srgb, var(--accent) 35%, var(--edge)); box-shadow: var(--shadow); }
+.dir-head { display: flex; align-items: center; gap: 9px; margin-bottom: 9px; }
+.idx {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-radius: 6px;
+  padding: 2px 7px;
+}
+.dir-head a.dir-name { font-size: 14px; font-weight: 650; color: var(--heading); letter-spacing: -0.005em; }
+.dir-head a.dir-name:hover { color: var(--accent); text-decoration: none; }
+.dir-head .n { margin-left: auto; font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dir-samples { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 3px; }
+.dir-samples a {
+  display: block;
+  font-size: 12.5px;
+  color: var(--text);
+  padding: 2px 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dir-samples a::before { content: "·"; color: var(--muted); margin-right: 7px; }
+.dir-samples a:hover { color: var(--accent); text-decoration: none; }
+.dir-all {
+  margin-top: 9px;
+  padding-top: 9px;
+  border-top: 1px solid var(--edge-soft);
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--muted);
+}
+.dir-all:hover { color: var(--accent); text-decoration: none; }
+.dir-all .arrow { margin-left: 5px; }
+
+.layout { display: flex; align-items: flex-start; gap: 40px; padding: 34px 28px 72px; }
+.front { padding: 0 28px; }
 
 /* Section index, mirroring the visualizer's left rail. */
 nav.rail { position: sticky; top: 74px; flex: 0 0 216px; }
@@ -225,22 +383,21 @@ nav.rail a[aria-current="true"] {
 nav.rail .n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 main { flex: 1 1 auto; min-width: 0; }
-section { margin-bottom: 40px; }
+section { margin-bottom: 44px; }
 section:last-of-type { margin-bottom: 8px; }
 .section-head {
   display: flex;
-  align-items: baseline;
-  gap: 12px;
-  margin-bottom: 4px;
-  padding-bottom: 10px;
+  align-items: center;
+  gap: 11px;
+  margin-bottom: 6px;
+  padding-bottom: 11px;
   border-bottom: 1px solid var(--edge);
 }
 .section-head h2 {
   margin: 0;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  font-size: 16px;
+  font-weight: 680;
+  letter-spacing: -0.01em;
   color: var(--heading);
 }
 .section-head .n { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
@@ -248,9 +405,8 @@ section:last-of-type { margin-bottom: 8px; }
 ul.pages { list-style: none; margin: 0; padding: 0; }
 li.page {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  column-gap: 24px;
-  padding: 11px 12px 12px 14px;
+  grid-template-columns: minmax(0, 1fr);
+  padding: 12px 12px 13px 14px;
   margin: 0 -12px 0 -14px;
   border-radius: 10px;
   border-bottom: 1px solid var(--edge-soft);
@@ -262,6 +418,7 @@ li.page:last-child { border-bottom: none; }
   grid-column: 1;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 9px;
   font-size: 15px;
   font-weight: 600;
@@ -272,13 +429,14 @@ li.page:last-child { border-bottom: none; }
 .page-title a:hover { color: var(--accent); }
 .dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
 .page-kind {
-  grid-column: 2;
-  grid-row: 1;
-  align-self: center;
-  font-size: 11px;
-  letter-spacing: 0.06em;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--muted);
+  background: var(--edge-soft);
+  border-radius: 100px;
+  padding: 2px 9px;
   white-space: nowrap;
 }
 .page-desc {
@@ -356,26 +514,30 @@ footer code {
   .controls .kbd { display: none; }
   input.search { width: auto; flex: 1 1 auto; min-width: 0; }
   select.filter { flex: 0 1 auto; min-width: 0; max-width: 40vw; }
-  .intro { padding: 20px 18px 16px; }
-  .layout { display: block; padding: 20px 18px 56px; }
+  .hero { padding: 40px 18px 28px; }
+  .hero h1 { font-size: 27px; }
+  .front { padding: 0 18px; }
+  .front-block { padding-top: 26px; }
+  .entries, .directory { grid-template-columns: 1fr; }
+  .layout { display: block; padding: 26px 18px 56px; }
   nav.rail { position: static; margin-bottom: 26px; }
   .rail-head { padding-left: 0; padding-right: 0; }
   nav.rail a { padding-left: 0; padding-right: 0; }
   nav.rail a:hover, nav.rail a[aria-current="true"] { background: none; color: var(--accent); }
   li.page {
-    grid-template-columns: minmax(0, 1fr);
     margin: 0;
     padding: 13px 0;
     border-radius: 0;
   }
   li.page:hover { background: none; box-shadow: none; }
-  .page-kind { grid-column: 1; grid-row: auto; order: -1; margin-bottom: 3px; }
   .page-title { font-size: 15.5px; }
 }
 @media print {
   .topbar, nav.rail, .icon-btn, .status { display: none; }
   body { background: #ffffff; color: #101828; font-size: 11pt; }
-  li.page { break-inside: avoid; border-bottom: 1px solid #d8e7f5; }
+  .hero { padding-top: 12px; background: none; }
+  .entry, .dir-card, li.page { break-inside: avoid; }
+  li.page { border-bottom: 1px solid #d9e6f3; }
   a { color: #101828; }
   .page-meta .path::after { content: ""; }
 }
@@ -393,10 +555,56 @@ footer code {
 <button id="theme" class="icon-btn" type="button" aria-label="Switch between light and dark"><svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6" /></svg><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2z" /></svg></button>
 </div>
 </div>
-<div class="intro">
-<h1><strong>29 pages</strong> across <strong>7 sections</strong>, joined by <strong>56</strong> links.</h1>
-<p>Every title opens the markdown source it was generated from. Built 2026-08-29.</p>
+<div class="hero">
+<div class="hero-inner">
+<p class="eyebrow">OpenWiki map &middot; built 2026-08-29</p>
+<h1>openwiki</h1>
+<p class="tagline">Every title opens the markdown source it was generated from.</p>
+<div class="hero-meta"><span><strong>29</strong> pages</span><span class="sep">&middot;</span><span><strong>7</strong> sections</span><span class="sep">&middot;</span><span><strong>56</strong> links</span><span class="legend"><span class="legend-chip"><span class="dot" style="background:#4FA8F0"></span>Reference</span><span class="legend-chip"><span class="dot" style="background:#B6DE3E"></span>Section</span><span class="legend-chip"><span class="dot" style="background:#D96FA6"></span>architecture</span><span class="legend-chip"><span class="dot" style="background:#A97FE0"></span>architecture-map</span><span class="legend-chip"><span class="dot" style="background:#D98A6B"></span>architecture-overview</span><span class="legend-chip"><span class="dot" style="background:#3FBFA0"></span>cli-reference</span><span class="legend-chip"><span class="dot" style="background:#E0A63E"></span>concept</span><span class="legend-chip"><span class="dot" style="background:#6E8FF0"></span>integration</span><span class="legend-chip"><span class="dot" style="background:#4FA8F0"></span>integration guide</span><span class="legend-chip"><span class="dot" style="background:#B6DE3E"></span>integration-guide</span><span class="legend-chip"><span class="dot" style="background:#D96FA6"></span>operations-guide</span><span class="legend-chip"><span class="dot" style="background:#A97FE0"></span>operations-reference</span><span class="legend-chip"><span class="dot" style="background:#D98A6B"></span>orientation-guide</span><span class="legend-chip"><span class="dot" style="background:#3FBFA0"></span>reference</span><span class="legend-chip"><span class="dot" style="background:#E0A63E"></span>testing-guide</span><span class="legend-chip"><span class="dot" style="background:#6E8FF0"></span>workflow</span></span></div>
 </div>
+</div>
+<div class="front"><div class="front-inner"><div class="front-block">
+<div class="front-head"><span class="idx">01</span><span>Start here</span><span class="n">3</span></div>
+<div class="entries">
+<a class="entry" href="./quickstart.md"><span class="entry-title">OpenWiki Quickstart</span><span class="entry-desc">Entry-point orientation for a coding agent working on the OpenWiki CLI codebase, with a task-routing map into the architecture, workflow, concept, operations, integration, and testing pages.</span><span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12h15M13.5 6l6 6-6 6" /></svg></span></a>
+<a class="entry" href="./index.md"><span class="entry-title">Home</span><span class="entry-desc">OpenWiki Quickstart - Entry-point orientation for a coding agent working on the OpenWiki CLI codebase, with a task-routing map into the architecture, workflow, concept, operations,…</span><span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12h15M13.5 6l6 6-6 6" /></svg></span></a>
+<a class="entry" href="./best-practices.md"><span class="entry-title">Best practices</span><span class="entry-desc">Used-in-this-repo inventory for OpenWiki — not a TypeScript/Node textbook. List only what this codebase adopts (with paths). Skip generally public knowledge (common idioms, generic…</span><span class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4.5 12h15M13.5 6l6 6-6 6" /></svg></span></a>
+</div>
+</div><div class="front-block">
+<div class="front-head"><span>Sections</span><span class="n">6</span></div>
+<div class="directory">
+<div class="dir-card">
+<div class="dir-head"><span class="idx">02</span><a class="dir-name" href="#section-architecture">Architecture</a><span class="n">4</span></div>
+<ul class="dir-samples"><li><a href="./architecture/index.md">Architecture</a></li><li><a href="./architecture/agent-runtime.md">Agent Runtime, Models, and Middleware</a></li><li><a href="./architecture/overview.md">Architecture Overview</a></li></ul>
+<a class="dir-all" href="#section-architecture">All 4 pages<span class="arrow" aria-hidden="true">&rarr;</span></a>
+</div>
+<div class="dir-card">
+<div class="dir-head"><span class="idx">03</span><a class="dir-name" href="#section-concepts">Concepts</a><span class="n">5</span></div>
+<ul class="dir-samples"><li><a href="./concepts/index.md">Concepts</a></li><li><a href="./concepts/two-modes.md">Code vs Personal Modes</a></li><li><a href="./concepts/grounded-claims.md">Grounded Claims</a></li></ul>
+<a class="dir-all" href="#section-concepts">All 5 pages<span class="arrow" aria-hidden="true">&rarr;</span></a>
+</div>
+<div class="dir-card">
+<div class="dir-head"><span class="idx">04</span><a class="dir-name" href="#section-integrations">Integrations</a><span class="n">4</span></div>
+<ul class="dir-samples"><li><a href="./integrations/index.md">Integrations</a></li><li><a href="./integrations/coding-agents.md">Coding-Agent Integrations (Codex/Claude/OpenCode/Cursor/Grok/Antigravity)</a></li><li><a href="./integrations/visualizer.md">Interactive Visualizer</a></li></ul>
+<a class="dir-all" href="#section-integrations">All 4 pages<span class="arrow" aria-hidden="true">&rarr;</span></a>
+</div>
+<div class="dir-card">
+<div class="dir-head"><span class="idx">05</span><a class="dir-name" href="#section-operations">Operations</a><span class="n">5</span></div>
+<ul class="dir-samples"><li><a href="./operations/index.md">Operations</a></li><li><a href="./operations/ci-scheduling.md">CI Scheduling and Self-Update</a></li><li><a href="./operations/cli-reference.md">CLI Commands and Flags</a></li></ul>
+<a class="dir-all" href="#section-operations">All 5 pages<span class="arrow" aria-hidden="true">&rarr;</span></a>
+</div>
+<div class="dir-card">
+<div class="dir-head"><span class="idx">06</span><a class="dir-name" href="#section-testing">Testing</a><span class="n">2</span></div>
+<ul class="dir-samples"><li><a href="./testing/index.md">Testing</a></li><li><a href="./testing/overview.md">Testing Guide</a></li></ul>
+<a class="dir-all" href="#section-testing">All 2 pages<span class="arrow" aria-hidden="true">&rarr;</span></a>
+</div>
+<div class="dir-card">
+<div class="dir-head"><span class="idx">07</span><a class="dir-name" href="#section-workflows">Workflows</a><span class="n">6</span></div>
+<ul class="dir-samples"><li><a href="./workflows/index.md">Workflows</a></li><li><a href="./workflows/claims-reconciliation.md">Claims Reconciliation on Update</a></li><li><a href="./workflows/onboarding.md">Onboarding and Setup</a></li></ul>
+<a class="dir-all" href="#section-workflows">All 6 pages<span class="arrow" aria-hidden="true">&rarr;</span></a>
+</div>
+</div>
+</div></div></div>
 <div class="layout">
 <nav class="rail" aria-label="Sections">
 <div class="rail-head"><span>Sections</span><span class="rail-count">7</span></div>
@@ -413,181 +621,152 @@ footer code {
 <main id="contents">
 <p id="status" class="status" role="status"></p>
 <section id="section-__root" data-section="__root">
-<div class="section-head"><h2>Overview</h2><span class="n">3</span></div>
+<div class="section-head"><span class="idx">01</span><h2>Overview</h2><span class="n">3 pages</span></div>
 <ul class="pages">
-<li class="page" id="page-index" data-haystack="home  section index" data-kind="Section">
-<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./index.md">Home</a></h3>
-<span class="page-kind">Section</span>
-<p class="page-meta"><span class="path">index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
+<li class="page" id="page-index" data-haystack="home openwiki quickstart - entry-point orientation for a coding agent working on the openwiki cli codebase, with a task-routing map into the architecture, workflow, concept, operations,… section index" data-kind="Section">
+<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./index.md">Home</a><span class="page-kind">Section</span></h3>
+<p class="page-desc">OpenWiki Quickstart - Entry-point orientation for a coding agent working on the OpenWiki CLI codebase, with a task-routing map into the architecture, workflow, concept, operations,…</p><p class="page-meta"><span class="path">index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-quickstart">OpenWiki Quickstart</a></span></li>
-<li class="page" id="page-best-practices" data-haystack="best practices  reference best-practices" data-kind="Reference">
-<h3 class="page-title"><span class="dot" style="background:#4FA8F0"></span><a href="./best-practices.md">Best practices</a></h3>
-<span class="page-kind">Reference</span>
-<p class="page-meta"><span class="path">best-practices.md</span><span class="sep">&middot;</span><span>4 min</span></p>
+<li class="page" id="page-best-practices" data-haystack="best practices used-in-this-repo inventory for openwiki — not a typescript/node textbook. list only what this codebase adopts (with paths). skip generally public knowledge (common idioms, generic… reference best-practices" data-kind="Reference">
+<h3 class="page-title"><span class="dot" style="background:#4FA8F0"></span><a href="./best-practices.md">Best practices</a><span class="page-kind">Reference</span></h3>
+<p class="page-desc">Used-in-this-repo inventory for OpenWiki — not a TypeScript/Node textbook. List only what this codebase adopts (with paths). Skip generally public knowledge (common idioms, generic…</p><p class="page-meta"><span class="path">best-practices.md</span><span class="sep">&middot;</span><span>4 min</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-architecture/overview">Architecture Overview</a><span class="sep">, </span><a href="#page-quickstart">OpenWiki Quickstart</a></span></li>
 <li class="page" id="page-quickstart" data-haystack="openwiki quickstart entry-point orientation for a coding agent working on the openwiki cli codebase, with a task-routing map into the architecture, workflow, concept, operations, integration, and testing pages. orientation-guide quickstart openwiki quickstart cli orientation task-routing deepagents" data-kind="orientation-guide">
-<h3 class="page-title"><span class="dot" style="background:#D98A6B"></span><a href="./quickstart.md">OpenWiki Quickstart</a></h3>
-<span class="page-kind">orientation-guide</span>
+<h3 class="page-title"><span class="dot" style="background:#D98A6B"></span><a href="./quickstart.md">OpenWiki Quickstart</a><span class="page-kind">orientation-guide</span></h3>
 <p class="page-desc">Entry-point orientation for a coding agent working on the OpenWiki CLI codebase, with a task-routing map into the architecture, workflow, concept, operations, integration, and testing pages.</p><p class="page-meta"><span class="path">quickstart.md</span><span class="tags"><span class="tag">openwiki</span><span class="tag">quickstart</span><span class="tag">cli</span><span class="tag">orientation</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>6 min</span><span class="sep">&middot;</span><span>2 linked here</span></p>
 </li>
 </ul>
 </section>
 <section id="section-architecture" data-section="architecture">
-<div class="section-head"><h2>Architecture</h2><span class="n">4</span></div>
+<div class="section-head"><span class="idx">02</span><h2>Architecture</h2><span class="n">4 pages</span></div>
 <ul class="pages">
-<li class="page" id="page-architecture/index" data-haystack="architecture  section architecture/index" data-kind="Section">
-<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./architecture/index.md">Architecture</a></h3>
-<span class="page-kind">Section</span>
-<p class="page-meta"><span class="path">architecture/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
+<li class="page" id="page-architecture/index" data-haystack="architecture agent runtime, models, and middleware - how openwiki builds and runs its deepagents documentation agent — resolving a model provider and model id, instantiating the right langchain… section architecture/index" data-kind="Section">
+<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./architecture/index.md">Architecture</a><span class="page-kind">Section</span></h3>
+<p class="page-desc">Agent Runtime, Models, and Middleware - How OpenWiki builds and runs its DeepAgents documentation agent — resolving a model provider and model id, instantiating the right LangChain…</p><p class="page-meta"><span class="path">architecture/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-architecture/agent-runtime">Agent Runtime, Models, and Middleware</a><span class="sep">, </span><a href="#page-architecture/overview">Architecture Overview</a><span class="sep">, </span><a href="#page-architecture/source-map">Source Map</a></span></li>
 <li class="page" id="page-architecture/agent-runtime" data-haystack="agent runtime, models, and middleware how openwiki builds and runs its deepagents documentation agent — resolving a model provider and model id, instantiating the right langchain chat model, mounting a sandboxed docs-only filesystem backend, and running the okf, translation, and crash-guard middleware around each run. architecture architecture/agent-runtime agent-runtime model-providers middleware deepagents filesystem-sandbox langchain" data-kind="architecture">
-<h3 class="page-title"><span class="dot" style="background:#D96FA6"></span><a href="./architecture/agent-runtime.md">Agent Runtime, Models, and Middleware</a></h3>
-<span class="page-kind">architecture</span>
+<h3 class="page-title"><span class="dot" style="background:#D96FA6"></span><a href="./architecture/agent-runtime.md">Agent Runtime, Models, and Middleware</a><span class="page-kind">architecture</span></h3>
 <p class="page-desc">How OpenWiki builds and runs its DeepAgents documentation agent — resolving a model provider and model id, instantiating the right LangChain chat model, mounting a sandboxed docs-only filesystem backend, and running the OKF, translation, and crash-guard middleware around each run.</p><p class="page-meta"><span class="path">architecture/agent-runtime.md</span><span class="tags"><span class="tag">agent-runtime</span><span class="tag">model-providers</span><span class="tag">middleware</span><span class="tag">deepagents</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>10 min</span><span class="sep">&middot;</span><span>2 linked here</span></p>
 </li>
 <li class="page" id="page-architecture/overview" data-haystack="architecture overview top-level map of openwiki - the cli entrypoint, the deepagents runtime, the code vs personal modes, native vs host-driven generation, and how claims, okf finalization, connectors, and the visualizer fit together. architecture-overview architecture/overview" data-kind="architecture-overview">
-<h3 class="page-title"><span class="dot" style="background:#D98A6B"></span><a href="./architecture/overview.md">Architecture Overview</a></h3>
-<span class="page-kind">architecture-overview</span>
+<h3 class="page-title"><span class="dot" style="background:#D98A6B"></span><a href="./architecture/overview.md">Architecture Overview</a><span class="page-kind">architecture-overview</span></h3>
 <p class="page-desc">Top-level map of OpenWiki - the CLI entrypoint, the DeepAgents runtime, the code vs personal modes, native vs host-driven generation, and how Claims, OKF finalization, connectors, and the visualizer fit together.</p><p class="page-meta"><span class="path">architecture/overview.md</span><span class="sep">&middot;</span><span>7 min</span><span class="sep">&middot;</span><span>4 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-concepts/two-modes">Code vs Personal Modes</a><span class="sep">, </span><a href="#page-architecture/agent-runtime">Agent Runtime, Models, and Middleware</a><span class="sep">, </span><a href="#page-workflows/repository-generation">Repository Generation Lifecycle</a><span class="sep">, +2 more</span></span></li>
 <li class="page" id="page-architecture/source-map" data-haystack="source map maps the openwiki /src directory to its owned subsystems, giving each one a responsibility and its principal entry files, and identifies the largest, most central files that anchor agent execution, configuration, and repository generation. architecture-map architecture/source-map source-map architecture subsystems entrypoints src-layout" data-kind="architecture-map">
-<h3 class="page-title"><span class="dot" style="background:#A97FE0"></span><a href="./architecture/source-map.md">Source Map</a></h3>
-<span class="page-kind">architecture-map</span>
+<h3 class="page-title"><span class="dot" style="background:#A97FE0"></span><a href="./architecture/source-map.md">Source Map</a><span class="page-kind">architecture-map</span></h3>
 <p class="page-desc">Maps the OpenWiki /src directory to its owned subsystems, giving each one a responsibility and its principal entry files, and identifies the largest, most central files that anchor agent execution, configuration, and repository generation.</p><p class="page-meta"><span class="path">architecture/source-map.md</span><span class="tags"><span class="tag">source-map</span><span class="tag">architecture</span><span class="tag">subsystems</span><span class="tag">entrypoints</span><span class="tag more">+1</span></span><span class="sep">&middot;</span><span>7 min</span><span class="sep">&middot;</span><span>5 linked here</span></p>
 </li>
 </ul>
 </section>
 <section id="section-concepts" data-section="concepts">
-<div class="section-head"><h2>Concepts</h2><span class="n">5</span></div>
+<div class="section-head"><span class="idx">03</span><h2>Concepts</h2><span class="n">5 pages</span></div>
 <ul class="pages">
-<li class="page" id="page-concepts/index" data-haystack="concepts  section concepts/index" data-kind="Section">
-<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./concepts/index.md">Concepts</a></h3>
-<span class="page-kind">Section</span>
-<p class="page-meta"><span class="path">concepts/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
+<li class="page" id="page-concepts/index" data-haystack="concepts grounded claims - how openwiki grounds generated wiki pages in versioned repository evidence through the claims model, including the store, session, and runtime split, evidence… section concepts/index" data-kind="Section">
+<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./concepts/index.md">Concepts</a><span class="page-kind">Section</span></h3>
+<p class="page-desc">Grounded Claims - How OpenWiki grounds generated wiki pages in versioned repository evidence through the Claims model, including the store, session, and runtime split, evidence…</p><p class="page-meta"><span class="path">concepts/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-concepts/grounded-claims">Grounded Claims</a><span class="sep">, </span><a href="#page-concepts/model-providers">Model Providers and Credentials</a><span class="sep">, </span><a href="#page-concepts/okf-output">Open Knowledge Format Output</a><span class="sep">, +1 more</span></span></li>
 <li class="page" id="page-concepts/two-modes" data-haystack="code vs personal modes how openwiki chooses between code mode (a repository wiki written to openwiki/) and personal mode (a knowledge brain written to ~/.openwiki/wiki), including mode selection, state directories, and which capabilities apply to each mode. concept concepts/two-modes modes cli configuration repository-wiki personal-wiki output-mode" data-kind="concept">
-<h3 class="page-title"><span class="dot" style="background:#E0A63E"></span><a href="./concepts/two-modes.md">Code vs Personal Modes</a></h3>
-<span class="page-kind">concept</span>
+<h3 class="page-title"><span class="dot" style="background:#E0A63E"></span><a href="./concepts/two-modes.md">Code vs Personal Modes</a><span class="page-kind">concept</span></h3>
 <p class="page-desc">How OpenWiki chooses between code mode (a repository wiki written to openwiki/) and personal mode (a knowledge brain written to ~/.openwiki/wiki), including mode selection, state directories, and which capabilities apply to each mode.</p><p class="page-meta"><span class="path">concepts/two-modes.md</span><span class="tags"><span class="tag">modes</span><span class="tag">cli</span><span class="tag">configuration</span><span class="tag">repository-wiki</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>5 min</span><span class="sep">&middot;</span><span>3 linked here</span></p>
 </li>
 <li class="page" id="page-concepts/grounded-claims" data-haystack="grounded claims how openwiki grounds generated wiki pages in versioned repository evidence through the claims model, including the store, session, and runtime split, evidence resolution and staleness detection, and the durability boundary reached at page completion. concept concepts/grounded-claims claims evidence grounding provenance verification repository okf" data-kind="concept">
-<h3 class="page-title"><span class="dot" style="background:#E0A63E"></span><a href="./concepts/grounded-claims.md">Grounded Claims</a></h3>
-<span class="page-kind">concept</span>
+<h3 class="page-title"><span class="dot" style="background:#E0A63E"></span><a href="./concepts/grounded-claims.md">Grounded Claims</a><span class="page-kind">concept</span></h3>
 <p class="page-desc">How OpenWiki grounds generated wiki pages in versioned repository evidence through the Claims model, including the store, session, and runtime split, evidence resolution and staleness detection, and the durability boundary reached at page completion.</p><p class="page-meta"><span class="path">concepts/grounded-claims.md</span><span class="tags"><span class="tag">claims</span><span class="tag">evidence</span><span class="tag">grounding</span><span class="tag">provenance</span><span class="tag more">+3</span></span><span class="sep">&middot;</span><span>9 min</span><span class="sep">&middot;</span><span>4 linked here</span></p>
 </li>
 <li class="page" id="page-concepts/model-providers" data-haystack="model providers and credentials reference for openwiki&#39;s supported model providers, their environment keys, base urls, and authentication methods (api keys, chatgpt oauth, vertex adc, aws sdk, and external cli), and where credentials and oauth tokens are persisted. reference concepts/model-providers model-providers credentials oauth authentication configuration env" data-kind="reference">
-<h3 class="page-title"><span class="dot" style="background:#3FBFA0"></span><a href="./concepts/model-providers.md">Model Providers and Credentials</a></h3>
-<span class="page-kind">reference</span>
+<h3 class="page-title"><span class="dot" style="background:#3FBFA0"></span><a href="./concepts/model-providers.md">Model Providers and Credentials</a><span class="page-kind">reference</span></h3>
 <p class="page-desc">Reference for OpenWiki&#39;s supported model providers, their environment keys, base URLs, and authentication methods (API keys, ChatGPT OAuth, Vertex ADC, AWS SDK, and external CLI), and where credentials and OAuth tokens are persisted.</p><p class="page-meta"><span class="path">concepts/model-providers.md</span><span class="tags"><span class="tag">model-providers</span><span class="tag">credentials</span><span class="tag">oauth</span><span class="tag">authentication</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>8 min</span><span class="sep">&middot;</span><span>4 linked here</span></p>
 </li>
 <li class="page" id="page-concepts/okf-output" data-haystack="open knowledge format output how openwiki produces okf-compliant pages — validated yaml frontmatter, code-owned generation provenance, synchronized directory indexes, and mermaid diagrams that are validated and degraded before they reach a renderer. concept concepts/okf-output okf frontmatter provenance index mermaid wiki-finalization" data-kind="concept">
-<h3 class="page-title"><span class="dot" style="background:#E0A63E"></span><a href="./concepts/okf-output.md">Open Knowledge Format Output</a></h3>
-<span class="page-kind">concept</span>
+<h3 class="page-title"><span class="dot" style="background:#E0A63E"></span><a href="./concepts/okf-output.md">Open Knowledge Format Output</a><span class="page-kind">concept</span></h3>
 <p class="page-desc">How OpenWiki produces OKF-compliant pages — validated YAML frontmatter, code-owned generation provenance, synchronized directory indexes, and Mermaid diagrams that are validated and degraded before they reach a renderer.</p><p class="page-meta"><span class="path">concepts/okf-output.md</span><span class="tags"><span class="tag">okf</span><span class="tag">frontmatter</span><span class="tag">provenance</span><span class="tag">index</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>9 min</span><span class="sep">&middot;</span><span>4 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-workflows/wiki-finalization">Wiki Finalization and Link Integrity</a><span class="sep">, </span><a href="#page-architecture/overview">Architecture Overview</a></span></li>
 </ul>
 </section>
 <section id="section-integrations" data-section="integrations">
-<div class="section-head"><h2>Integrations</h2><span class="n">4</span></div>
+<div class="section-head"><span class="idx">04</span><h2>Integrations</h2><span class="n">4 pages</span></div>
 <ul class="pages">
-<li class="page" id="page-integrations/index" data-haystack="integrations  section integrations/index" data-kind="Section">
-<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./integrations/index.md">Integrations</a></h3>
-<span class="page-kind">Section</span>
-<p class="page-meta"><span class="path">integrations/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
+<li class="page" id="page-integrations/index" data-haystack="integrations coding-agent integrations (codex/claude/opencode/cursor) - how openwiki runs inside a host coding agent through the five-operation mcp page-job protocol, how install writes host… section integrations/index" data-kind="Section">
+<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./integrations/index.md">Integrations</a><span class="page-kind">Section</span></h3>
+<p class="page-desc">Coding-Agent Integrations (Codex/Claude/OpenCode/Cursor) - How OpenWiki runs inside a host coding agent through the five-operation MCP page-job protocol, how install writes host…</p><p class="page-meta"><span class="path">integrations/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-integrations/coding-agents">Coding-Agent Integrations (Codex/Claude/OpenCode/Cursor/Grok/Antigravity)</a><span class="sep">, </span><a href="#page-integrations/connectors">Source Connectors</a><span class="sep">, </span><a href="#page-integrations/visualizer">Interactive Visualizer</a></span></li>
 <li class="page" id="page-integrations/coding-agents" data-haystack="coding-agent integrations (codex/claude/opencode/cursor/grok/antigravity) how openwiki runs inside a host coding agent through the five-operation mcp page-job protocol, how install writes host config and the shared skill bundle, and the divided ownership between host research and openwiki finalization. integration guide integrations/coding-agents integrations mcp coding-agents installation page-job host" data-kind="integration guide">
-<h3 class="page-title"><span class="dot" style="background:#4FA8F0"></span><a href="./integrations/coding-agents.md">Coding-Agent Integrations (Codex/Claude/OpenCode/Cursor/Grok/Antigravity)</a></h3>
-<span class="page-kind">integration guide</span>
+<h3 class="page-title"><span class="dot" style="background:#4FA8F0"></span><a href="./integrations/coding-agents.md">Coding-Agent Integrations (Codex/Claude/OpenCode/Cursor/Grok/Antigravity)</a><span class="page-kind">integration guide</span></h3>
 <p class="page-desc">How OpenWiki runs inside a host coding agent through the five-operation MCP page-job protocol, how install writes host config and the shared skill bundle, and the divided ownership between host research and OpenWiki finalization.</p><p class="page-meta"><span class="path">integrations/coding-agents.md</span><span class="tags"><span class="tag">integrations</span><span class="tag">mcp</span><span class="tag">coding-agents</span><span class="tag">installation</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>9 min</span><span class="sep">&middot;</span><span>2 linked here</span></p>
 </li>
 <li class="page" id="page-integrations/visualizer" data-haystack="interactive visualizer how the `openwiki visualize` command builds a link graph from wiki markdown and okf frontmatter, serves a live single-page reader over loopback http, and exports a self-contained static site for hosting. integration integrations/visualizer visualizer graph static-export cli server markdown-reader" data-kind="integration">
-<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./integrations/visualizer.md">Interactive Visualizer</a></h3>
-<span class="page-kind">integration</span>
+<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./integrations/visualizer.md">Interactive Visualizer</a><span class="page-kind">integration</span></h3>
 <p class="page-desc">How the `openwiki visualize` command builds a link graph from wiki Markdown and OKF frontmatter, serves a live single-page reader over loopback HTTP, and exports a self-contained static site for hosting.</p><p class="page-meta"><span class="path">integrations/visualizer.md</span><span class="tags"><span class="tag">visualizer</span><span class="tag">graph</span><span class="tag">static-export</span><span class="tag">cli</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>8 min</span><span class="sep">&middot;</span><span>1 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-concepts/okf-output">Open Knowledge Format Output</a><span class="sep">, </span><a href="#page-operations/cli-reference">CLI Commands and Flags</a><span class="sep">, </span><a href="#page-testing/overview">Testing Guide</a></span></li>
 <li class="page" id="page-integrations/connectors" data-haystack="source connectors how openwiki&#39;s built-in source connectors (custom mcp, notion, slack, gmail/google, x, web search, hacker news, langsmith, git-repo) are defined, run under the connectorruntime contract, exposed as agent tools, and how to add a new one. integration-guide integrations/connectors connectors mcp ingestion personal-wiki integrations security" data-kind="integration-guide">
-<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./integrations/connectors.md">Source Connectors</a></h3>
-<span class="page-kind">integration-guide</span>
+<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./integrations/connectors.md">Source Connectors</a><span class="page-kind">integration-guide</span></h3>
 <p class="page-desc">How OpenWiki&#39;s built-in source connectors (Custom MCP, Notion, Slack, Gmail/Google, X, Web Search, Hacker News, LangSmith, git-repo) are defined, run under the ConnectorRuntime contract, exposed as agent tools, and how to add a new one.</p><p class="page-meta"><span class="path">integrations/connectors.md</span><span class="tags"><span class="tag">connectors</span><span class="tag">mcp</span><span class="tag">ingestion</span><span class="tag">personal-wiki</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>7 min</span><span class="sep">&middot;</span><span>1 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-architecture/source-map">Source Map</a><span class="sep">, </span><a href="#page-concepts/model-providers">Model Providers and Credentials</a><span class="sep">, </span><a href="#page-workflows/personal-ingestion">Personal Mode Ingestion</a></span></li>
 </ul>
 </section>
 <section id="section-operations" data-section="operations">
-<div class="section-head"><h2>Operations</h2><span class="n">5</span></div>
+<div class="section-head"><span class="idx">05</span><h2>Operations</h2><span class="n">5 pages</span></div>
 <ul class="pages">
-<li class="page" id="page-operations/index" data-haystack="operations  section operations/index" data-kind="Section">
-<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./operations/index.md">Operations</a></h3>
-<span class="page-kind">Section</span>
-<p class="page-meta"><span class="path">operations/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
+<li class="page" id="page-operations/index" data-haystack="operations ci scheduling and self-update - how openwiki runs scheduled self-updates on github actions, gitlab ci, and bitbucket pipelines to open a docs pull request on change, how the… section operations/index" data-kind="Section">
+<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./operations/index.md">Operations</a><span class="page-kind">Section</span></h3>
+<p class="page-desc">CI Scheduling and Self-Update - How OpenWiki runs scheduled self-updates on GitHub Actions, GitLab CI, and Bitbucket Pipelines to open a docs pull request on change, how the…</p><p class="page-meta"><span class="path">operations/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-operations/ci-scheduling">CI Scheduling and Self-Update</a><span class="sep">, </span><a href="#page-operations/cli-reference">CLI Commands and Flags</a><span class="sep">, </span><a href="#page-operations/configuration">Configuration and Environment</a><span class="sep">, +1 more</span></span></li>
 <li class="page" id="page-operations/ci-scheduling" data-haystack="ci scheduling and self-update how openwiki runs scheduled self-updates on github actions, gitlab ci, and bitbucket pipelines to open a docs pull request on change, how the scheduling module parses and manages cron expressions, and the ephemeral-runner resume caveat. operations-guide operations/ci-scheduling" data-kind="operations-guide">
-<h3 class="page-title"><span class="dot" style="background:#D96FA6"></span><a href="./operations/ci-scheduling.md">CI Scheduling and Self-Update</a></h3>
-<span class="page-kind">operations-guide</span>
+<h3 class="page-title"><span class="dot" style="background:#D96FA6"></span><a href="./operations/ci-scheduling.md">CI Scheduling and Self-Update</a><span class="page-kind">operations-guide</span></h3>
 <p class="page-desc">How OpenWiki runs scheduled self-updates on GitHub Actions, GitLab CI, and Bitbucket Pipelines to open a docs pull request on change, how the scheduling module parses and manages cron expressions, and the ephemeral-runner resume caveat.</p><p class="page-meta"><span class="path">operations/ci-scheduling.md</span><span class="sep">&middot;</span><span>8 min</span><span class="sep">&middot;</span><span>1 linked here</span></p>
 </li>
 <li class="page" id="page-operations/cli-reference" data-haystack="cli commands and flags reference for the openwiki cli surface, covering command and flag parsing, run mode selection, print versus interactive dispatch, host integrations, visualize, cron scheduling, and how parsed commands are wired to their runners. cli-reference operations/cli-reference cli commands flags run-mode integrations visualize cron ink mcp" data-kind="cli-reference">
-<h3 class="page-title"><span class="dot" style="background:#3FBFA0"></span><a href="./operations/cli-reference.md">CLI Commands and Flags</a></h3>
-<span class="page-kind">cli-reference</span>
+<h3 class="page-title"><span class="dot" style="background:#3FBFA0"></span><a href="./operations/cli-reference.md">CLI Commands and Flags</a><span class="page-kind">cli-reference</span></h3>
 <p class="page-desc">Reference for the OpenWiki CLI surface, covering command and flag parsing, run mode selection, print versus interactive dispatch, host integrations, visualize, cron scheduling, and how parsed commands are wired to their runners.</p><p class="page-meta"><span class="path">operations/cli-reference.md</span><span class="tags"><span class="tag">cli</span><span class="tag">commands</span><span class="tag">flags</span><span class="tag">run-mode</span><span class="tag more">+5</span></span><span class="sep">&middot;</span><span>7 min</span><span class="sep">&middot;</span><span>4 linked here</span></p>
 </li>
 <li class="page" id="page-operations/configuration" data-haystack="configuration and environment how openwiki loads, resolves, and persists configuration through environment variables and the ~/.openwiki state directory, including secret sanitization, atomic env writes, and provider/token/reasoning settings. operations-reference operations/configuration" data-kind="operations-reference">
-<h3 class="page-title"><span class="dot" style="background:#A97FE0"></span><a href="./operations/configuration.md">Configuration and Environment</a></h3>
-<span class="page-kind">operations-reference</span>
+<h3 class="page-title"><span class="dot" style="background:#A97FE0"></span><a href="./operations/configuration.md">Configuration and Environment</a><span class="page-kind">operations-reference</span></h3>
 <p class="page-desc">How OpenWiki loads, resolves, and persists configuration through environment variables and the ~/.openwiki state directory, including secret sanitization, atomic env writes, and provider/token/reasoning settings.</p><p class="page-meta"><span class="path">operations/configuration.md</span><span class="sep">&middot;</span><span>8 min</span><span class="sep">&middot;</span><span>3 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-concepts/model-providers">Model Providers and Credentials</a><span class="sep">, </span><a href="#page-operations/cli-reference">CLI Commands and Flags</a><span class="sep">, </span><a href="#page-workflows/onboarding">Onboarding and Setup</a></span></li>
 <li class="page" id="page-operations/telemetry" data-haystack="telemetry and diagnostics how openwiki&#39;s opt-out telemetry pipeline emits a single anonymous run event per init/update run, how failures are classified into a closed error taxonomy, and how secrets and pii are kept out of the payload before it is sent to posthog. operations-guide operations/telemetry" data-kind="operations-guide">
-<h3 class="page-title"><span class="dot" style="background:#D96FA6"></span><a href="./operations/telemetry.md">Telemetry and Diagnostics</a></h3>
-<span class="page-kind">operations-guide</span>
+<h3 class="page-title"><span class="dot" style="background:#D96FA6"></span><a href="./operations/telemetry.md">Telemetry and Diagnostics</a><span class="page-kind">operations-guide</span></h3>
 <p class="page-desc">How OpenWiki&#39;s opt-out telemetry pipeline emits a single anonymous run event per init/update run, how failures are classified into a closed error taxonomy, and how secrets and PII are kept out of the payload before it is sent to PostHog.</p><p class="page-meta"><span class="path">operations/telemetry.md</span><span class="sep">&middot;</span><span>9 min</span><span class="sep">&middot;</span><span>1 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-architecture/overview">Architecture Overview</a><span class="sep">, </span><a href="#page-operations/configuration">Configuration and Environment</a><span class="sep">, </span><a href="#page-testing/overview">Testing Guide</a></span></li>
 </ul>
 </section>
 <section id="section-testing" data-section="testing">
-<div class="section-head"><h2>Testing</h2><span class="n">2</span></div>
+<div class="section-head"><span class="idx">06</span><h2>Testing</h2><span class="n">2 pages</span></div>
 <ul class="pages">
-<li class="page" id="page-testing/index" data-haystack="testing  section testing/index" data-kind="Section">
-<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./testing/index.md">Testing</a></h3>
-<span class="page-kind">Section</span>
-<p class="page-meta"><span class="path">testing/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
+<li class="page" id="page-testing/index" data-haystack="testing testing guide - how the openwiki test suite is laid out, the vitest and ink-testing-library tooling it uses, the pnpm test pipeline, and how to scope the narrowest validation that… section testing/index" data-kind="Section">
+<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./testing/index.md">Testing</a><span class="page-kind">Section</span></h3>
+<p class="page-desc">Testing Guide - How the OpenWiki test suite is laid out, the vitest and ink-testing-library tooling it uses, the pnpm test pipeline, and how to scope the narrowest validation that…</p><p class="page-meta"><span class="path">testing/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-testing/overview">Testing Guide</a></span></li>
 <li class="page" id="page-testing/overview" data-haystack="testing guide how the openwiki test suite is laid out, the vitest and ink-testing-library tooling it uses, the pnpm test pipeline, and how to scope the narrowest validation that proves a change per subsystem. testing-guide testing/overview testing vitest coverage ink-testing-library ci developer-workflow" data-kind="testing-guide">
-<h3 class="page-title"><span class="dot" style="background:#E0A63E"></span><a href="./testing/overview.md">Testing Guide</a></h3>
-<span class="page-kind">testing-guide</span>
+<h3 class="page-title"><span class="dot" style="background:#E0A63E"></span><a href="./testing/overview.md">Testing Guide</a><span class="page-kind">testing-guide</span></h3>
 <p class="page-desc">How the OpenWiki test suite is laid out, the vitest and ink-testing-library tooling it uses, the pnpm test pipeline, and how to scope the narrowest validation that proves a change per subsystem.</p><p class="page-meta"><span class="path">testing/overview.md</span><span class="tags"><span class="tag">testing</span><span class="tag">vitest</span><span class="tag">coverage</span><span class="tag">ink-testing-library</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>13 min</span><span class="sep">&middot;</span><span>3 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-architecture/source-map">Source Map</a><span class="sep">, </span><a href="#page-concepts/grounded-claims">Grounded Claims</a><span class="sep">, </span><a href="#page-integrations/coding-agents">Coding-Agent Integrations (Codex/Claude/OpenCode/Cursor/Grok/Antigravity)</a><span class="sep">, +1 more</span></span></li>
 </ul>
 </section>
 <section id="section-workflows" data-section="workflows">
-<div class="section-head"><h2>Workflows</h2><span class="n">6</span></div>
+<div class="section-head"><span class="idx">07</span><h2>Workflows</h2><span class="n">6 pages</span></div>
 <ul class="pages">
-<li class="page" id="page-workflows/index" data-haystack="workflows  section workflows/index" data-kind="Section">
-<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./workflows/index.md">Workflows</a></h3>
-<span class="page-kind">Section</span>
-<p class="page-meta"><span class="path">workflows/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
+<li class="page" id="page-workflows/index" data-haystack="workflows claims reconciliation on update - how an openwiki update checks persisted evidence versions before deciding a no-op, and how the page worker turns a complete intended claim set… section workflows/index" data-kind="Section">
+<h3 class="page-title"><span class="dot" style="background:#B6DE3E"></span><a href="./workflows/index.md">Workflows</a><span class="page-kind">Section</span></h3>
+<p class="page-desc">Claims Reconciliation on Update - How an OpenWiki update checks persisted evidence versions before deciding a no-op, and how the page worker turns a complete intended Claim set…</p><p class="page-meta"><span class="path">workflows/index.md</span><span class="sep">&middot;</span><span>1 min</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-workflows/claims-reconciliation">Claims Reconciliation on Update</a><span class="sep">, </span><a href="#page-workflows/onboarding">Onboarding and Setup</a><span class="sep">, </span><a href="#page-workflows/personal-ingestion">Personal Mode Ingestion</a><span class="sep">, +2 more</span></span></li>
 <li class="page" id="page-workflows/claims-reconciliation" data-haystack="claims reconciliation on update how an openwiki update checks persisted evidence versions before deciding a no-op, and how the page worker turns a complete intended claim set into confirm, update, add, and retract operations that keep stable identifiers and refresh code-owned evidence versions. workflow workflows/claims-reconciliation" data-kind="workflow">
-<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/claims-reconciliation.md">Claims Reconciliation on Update</a></h3>
-<span class="page-kind">workflow</span>
+<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/claims-reconciliation.md">Claims Reconciliation on Update</a><span class="page-kind">workflow</span></h3>
 <p class="page-desc">How an OpenWiki update checks persisted evidence versions before deciding a no-op, and how the page worker turns a complete intended Claim set into confirm, update, add, and retract operations that keep stable identifiers and refresh code-owned evidence versions.</p><p class="page-meta"><span class="path">workflows/claims-reconciliation.md</span><span class="sep">&middot;</span><span>10 min</span><span class="sep">&middot;</span><span>1 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-concepts/grounded-claims">Grounded Claims</a><span class="sep">, </span><a href="#page-workflows/repository-generation">Repository Generation Lifecycle</a><span class="sep">, </span><a href="#page-architecture/source-map">Source Map</a></span></li>
 <li class="page" id="page-workflows/onboarding" data-haystack="onboarding and setup how openwiki&#39;s first-run setup selects a provider and model, captures credentials, chooses a run mode, and bootstraps code-mode repositories, plus the layout and permissions of the ~/.openwiki state directory. workflow workflows/onboarding onboarding setup credentials code-mode openwiki-home configuration" data-kind="workflow">
-<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/onboarding.md">Onboarding and Setup</a></h3>
-<span class="page-kind">workflow</span>
+<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/onboarding.md">Onboarding and Setup</a><span class="page-kind">workflow</span></h3>
 <p class="page-desc">How OpenWiki&#39;s first-run setup selects a provider and model, captures credentials, chooses a run mode, and bootstraps code-mode repositories, plus the layout and permissions of the ~/.openwiki state directory.</p><p class="page-meta"><span class="path">workflows/onboarding.md</span><span class="tags"><span class="tag">onboarding</span><span class="tag">setup</span><span class="tag">credentials</span><span class="tag">code-mode</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>9 min</span><span class="sep">&middot;</span><span>2 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-concepts/model-providers">Model Providers and Credentials</a><span class="sep">, </span><a href="#page-concepts/two-modes">Code vs Personal Modes</a><span class="sep">, </span><a href="#page-operations/cli-reference">CLI Commands and Flags</a><span class="sep">, +1 more</span></span></li>
 <li class="page" id="page-workflows/personal-ingestion" data-haystack="personal mode ingestion how personal-mode ingestion resolves an ingestion target to configured source instances, pulls connector data within a 24-hour window, and drives per-source agent update runs that synthesize the local personal wiki. workflow workflows/personal-ingestion ingestion connectors personal-mode local-wiki agent-run scheduling" data-kind="workflow">
-<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/personal-ingestion.md">Personal Mode Ingestion</a></h3>
-<span class="page-kind">workflow</span>
+<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/personal-ingestion.md">Personal Mode Ingestion</a><span class="page-kind">workflow</span></h3>
 <p class="page-desc">How personal-mode ingestion resolves an ingestion target to configured source instances, pulls connector data within a 24-hour window, and drives per-source agent update runs that synthesize the local personal wiki.</p><p class="page-meta"><span class="path">workflows/personal-ingestion.md</span><span class="tags"><span class="tag">ingestion</span><span class="tag">connectors</span><span class="tag">personal-mode</span><span class="tag">local-wiki</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>6 min</span><span class="sep">&middot;</span><span>2 linked here</span></p>
 </li>
 <li class="page" id="page-workflows/repository-generation" data-haystack="repository generation lifecycle how openwiki drives resumable repository wiki generation through the five durable operations begin, submit_plan, next_page, submit_page, and finish, backed by an ordered pagejob queue in openwiki/.run.json with source-fingerprint invalidation and skipped-page handling. workflow workflows/repository-generation" data-kind="workflow">
-<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/repository-generation.md">Repository Generation Lifecycle</a></h3>
-<span class="page-kind">workflow</span>
+<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/repository-generation.md">Repository Generation Lifecycle</a><span class="page-kind">workflow</span></h3>
 <p class="page-desc">How OpenWiki drives resumable repository wiki generation through the five durable operations begin, submit_plan, next_page, submit_page, and finish, backed by an ordered PageJob queue in openwiki/.run.json with source-fingerprint invalidation and skipped-page handling.</p><p class="page-meta"><span class="path">workflows/repository-generation.md</span><span class="sep">&middot;</span><span>13 min</span><span class="sep">&middot;</span><span>5 linked here</span></p>
 </li>
 <li class="page" id="page-workflows/wiki-finalization" data-haystack="wiki finalization and link integrity how openwiki deterministically finalizes a run — persisting claims, projecting them into okf sources, synchronizing indexes and generated provenance, validating internal wiki links, and re-proving the whole run before deleting .run.json. workflow workflows/wiki-finalization finalization wiki okf link-validation provenance claims" data-kind="workflow">
-<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/wiki-finalization.md">Wiki Finalization and Link Integrity</a></h3>
-<span class="page-kind">workflow</span>
+<h3 class="page-title"><span class="dot" style="background:#6E8FF0"></span><a href="./workflows/wiki-finalization.md">Wiki Finalization and Link Integrity</a><span class="page-kind">workflow</span></h3>
 <p class="page-desc">How OpenWiki deterministically finalizes a run — persisting Claims, projecting them into OKF sources, synchronizing indexes and generated provenance, validating internal wiki links, and re-proving the whole run before deleting .run.json.</p><p class="page-meta"><span class="path">workflows/wiki-finalization.md</span><span class="tags"><span class="tag">finalization</span><span class="tag">wiki</span><span class="tag">okf</span><span class="tag">link-validation</span><span class="tag more">+2</span></span><span class="sep">&middot;</span><span>10 min</span><span class="sep">&middot;</span><span>2 linked here</span></p>
 <p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span><a href="#page-concepts/grounded-claims">Grounded Claims</a><span class="sep">, </span><a href="#page-concepts/okf-output">Open Knowledge Format Output</a><span class="sep">, </span><a href="#page-workflows/repository-generation">Repository Generation Lifecycle</a></span></li>
 </ul>
@@ -652,6 +831,7 @@ footer code {
     });
     document.body.dataset.empty = shown === 0 ? "true" : "false";
     var filtered = query !== "" || wanted !== "";
+    document.body.dataset.filtered = filtered ? "true" : "false";
     status.textContent = filtered ? shown + " of " + total + " pages match" : "";
   }
 
