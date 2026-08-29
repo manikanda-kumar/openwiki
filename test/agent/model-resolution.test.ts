@@ -1,15 +1,37 @@
 import { afterEach, describe, expect, test, vi } from "vitest";
-import { resolveModelId } from "../../src/agent/index.ts";
-import { OPENWIKI_MODEL_ID_ENV_KEY } from "../../src/config/constants.ts";
+import {
+  resolveModelId,
+  resolveRepositoryModelIds,
+} from "../../src/agent/index.ts";
+import {
+  DEFAULT_OPENWIKI_SPECIALIST_PATH_PREFIXES,
+  OPENWIKI_MODEL_ID_ENV_KEY,
+  OPENWIKI_PAGE_MODEL_ID_ENV_KEY,
+  OPENWIKI_PLANNER_MODEL_ID_ENV_KEY,
+  OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY,
+  OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY,
+} from "../../src/config/constants.ts";
 import type { OpenWikiRunEvent } from "../../src/agent/types.ts";
 
-const originalModelId = process.env[OPENWIKI_MODEL_ID_ENV_KEY];
+const repositoryModelEnvKeys = [
+  OPENWIKI_MODEL_ID_ENV_KEY,
+  OPENWIKI_PLANNER_MODEL_ID_ENV_KEY,
+  OPENWIKI_PAGE_MODEL_ID_ENV_KEY,
+  OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY,
+  OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY,
+] as const;
+const originalEnv = Object.fromEntries(
+  repositoryModelEnvKeys.map((key) => [key, process.env[key]]),
+);
 
 afterEach(() => {
-  if (originalModelId === undefined) {
-    delete process.env[OPENWIKI_MODEL_ID_ENV_KEY];
-  } else {
-    process.env[OPENWIKI_MODEL_ID_ENV_KEY] = originalModelId;
+  for (const key of repositoryModelEnvKeys) {
+    const value = originalEnv[key];
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
   }
 });
 
@@ -52,6 +74,85 @@ describe("resolveModelId", () => {
     expect(() =>
       resolveModelId({ modelId: "http://evil.example" }, "anthropic"),
     ).toThrow(/Invalid model ID/u);
+  });
+});
+
+describe("resolveRepositoryModelIds", () => {
+  test("uses OPENWIKI_MODEL_ID for every unset role", () => {
+    process.env[OPENWIKI_MODEL_ID_ENV_KEY] = "fallback-model";
+    delete process.env[OPENWIKI_PLANNER_MODEL_ID_ENV_KEY];
+    delete process.env[OPENWIKI_PAGE_MODEL_ID_ENV_KEY];
+    delete process.env[OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY];
+    process.env[OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY] = "architecture/";
+
+    expect(resolveRepositoryModelIds({}, "openai-compatible")).toEqual({
+      plannerModelId: "fallback-model",
+      pageModelId: "fallback-model",
+      specialistPathPrefixes: [],
+    });
+  });
+
+  test("uses the planner override while the page role falls back", () => {
+    process.env[OPENWIKI_MODEL_ID_ENV_KEY] = "fallback-model";
+    process.env[OPENWIKI_PLANNER_MODEL_ID_ENV_KEY] = "planner-model";
+    delete process.env[OPENWIKI_PAGE_MODEL_ID_ENV_KEY];
+    delete process.env[OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY];
+
+    expect(resolveRepositoryModelIds({}, "openai-compatible")).toMatchObject({
+      plannerModelId: "planner-model",
+      pageModelId: "fallback-model",
+    });
+  });
+
+  test("resolves independent planner and page overrides", () => {
+    process.env[OPENWIKI_MODEL_ID_ENV_KEY] = "fallback-model";
+    process.env[OPENWIKI_PLANNER_MODEL_ID_ENV_KEY] = "planner-model";
+    process.env[OPENWIKI_PAGE_MODEL_ID_ENV_KEY] = "page-model";
+    delete process.env[OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY];
+
+    expect(resolveRepositoryModelIds({}, "openai-compatible")).toMatchObject({
+      plannerModelId: "planner-model",
+      pageModelId: "page-model",
+    });
+  });
+
+  test("enables the default prefixes only when a specialist model is set", () => {
+    process.env[OPENWIKI_MODEL_ID_ENV_KEY] = "fallback-model";
+    process.env[OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY] = "specialist-model";
+    delete process.env[OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY];
+
+    expect(resolveRepositoryModelIds({}, "openai-compatible")).toMatchObject({
+      specialistModelId: "specialist-model",
+      specialistPathPrefixes: [...DEFAULT_OPENWIKI_SPECIALIST_PATH_PREFIXES],
+    });
+  });
+
+  test("parses custom specialist prefixes in configured order", () => {
+    process.env[OPENWIKI_MODEL_ID_ENV_KEY] = "fallback-model";
+    process.env[OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY] = "specialist-model";
+    process.env[OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY] =
+      " custom/one,architecture/session-,, custom/two ";
+
+    expect(
+      resolveRepositoryModelIds({}, "openai-compatible").specialistPathPrefixes,
+    ).toEqual(["custom/one", "architecture/session-", "custom/two"]);
+  });
+
+  test("keeps --modelId as the fallback for every role", () => {
+    process.env[OPENWIKI_MODEL_ID_ENV_KEY] = "env-model";
+    delete process.env[OPENWIKI_PLANNER_MODEL_ID_ENV_KEY];
+    delete process.env[OPENWIKI_PAGE_MODEL_ID_ENV_KEY];
+    delete process.env[OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY];
+
+    expect(
+      resolveRepositoryModelIds(
+        { modelId: "command-model" },
+        "openai-compatible",
+      ),
+    ).toMatchObject({
+      plannerModelId: "command-model",
+      pageModelId: "command-model",
+    });
   });
 });
 

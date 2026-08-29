@@ -297,6 +297,8 @@ The onboarding default is OpenAI with `gpt-5.6-terra`. Every provider includes p
 | **Nebius / Fireworks / Baseten / NVIDIA NIM**                | Provider API key                        |
 | **OpenAI-compatible** (LiteLLM, Ollama, LM Studio, gateways) | Base URL + key                          |
 
+Repository `--init` and `--update` runs can split work across models on the same provider. Set `OPENWIKI_PLANNER_MODEL_ID` for planning, `OPENWIKI_PAGE_MODEL_ID` for normal pages, and `OPENWIKI_SPECIALIST_MODEL_ID` for selected pages; every unset role falls back to `OPENWIKI_MODEL_ID` or `--modelId`. Specialist routing is off unless its model is set. `OPENWIKI_SPECIALIST_PATH_PREFIXES` accepts comma-separated, case-sensitive paths relative to `openwiki/`; when unset, the specialist defaults are `architecture/session-`, `integrations/service-auth`, `integrations/source-control`, `workflows/websocket`, `workflows/adding-a-sandbox-provider`, and `sandbox-runtime-protocol`. Each page is written entirely by one model.
+
 <details>
 <summary><b>GitHub Copilot</b></summary>
 

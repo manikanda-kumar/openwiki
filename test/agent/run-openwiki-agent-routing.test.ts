@@ -37,12 +37,25 @@ vi.mock("../../src/setup/onboarding.js", async (importOriginal) => ({
 import { runOpenWikiAgent } from "../../src/agent/index.ts";
 import {
   OPENROUTER_API_KEY_ENV_KEY,
+  OPENWIKI_PAGE_MODEL_ID_ENV_KEY,
+  OPENWIKI_PLANNER_MODEL_ID_ENV_KEY,
   OPENWIKI_PROVIDER_ENV_KEY,
+  OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY,
+  OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY,
 } from "../../src/config/constants.ts";
 
 const temporaryDirectories: string[] = [];
 const originalProvider = process.env[OPENWIKI_PROVIDER_ENV_KEY];
 const originalApiKey = process.env[OPENROUTER_API_KEY_ENV_KEY];
+const roleEnvKeys = [
+  OPENWIKI_PLANNER_MODEL_ID_ENV_KEY,
+  OPENWIKI_PAGE_MODEL_ID_ENV_KEY,
+  OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY,
+  OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY,
+] as const;
+const originalRoleEnv = Object.fromEntries(
+  roleEnvKeys.map((key) => [key, process.env[key]]),
+);
 
 /**
  * Creates an empty async stream accepted by the shared graph runner.
@@ -61,6 +74,7 @@ function createEmptyAgentStream(): AsyncIterable<unknown> {
 beforeEach(() => {
   process.env[OPENWIKI_PROVIDER_ENV_KEY] = "openrouter";
   process.env[OPENROUTER_API_KEY_ENV_KEY] = "test-key";
+  for (const key of roleEnvKeys) delete process.env[key];
   harness.createDeepAgent.mockReset();
   harness.runNativeRepositoryGeneration.mockReset();
   harness.runNativeRepositoryGeneration.mockResolvedValue({ skipped: false });
@@ -80,6 +94,11 @@ afterEach(async () => {
     delete process.env[OPENROUTER_API_KEY_ENV_KEY];
   } else {
     process.env[OPENROUTER_API_KEY_ENV_KEY] = originalApiKey;
+  }
+  for (const key of roleEnvKeys) {
+    const value = originalRoleEnv[key];
+    if (value === undefined) delete process.env[key];
+    else process.env[key] = value;
   }
   await Promise.all(
     temporaryDirectories
@@ -131,5 +150,26 @@ describe("runOpenWikiAgent repository routing", () => {
 
     expect(harness.runNativeRepositoryGeneration).not.toHaveBeenCalled();
     expect(harness.createDeepAgent).toHaveBeenCalledTimes(1);
+  });
+
+  test("passes all repository model roles and custom prefixes to the runner", async () => {
+    const root = await mkdtemp(path.join(tmpdir(), "openwiki-routing-"));
+    temporaryDirectories.push(root);
+    process.env[OPENWIKI_PLANNER_MODEL_ID_ENV_KEY] = "planner-model";
+    process.env[OPENWIKI_PAGE_MODEL_ID_ENV_KEY] = "page-model";
+    process.env[OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY] = "specialist-model";
+    process.env[OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY] =
+      "architecture/session-,custom/";
+
+    await runOpenWikiAgent("init", root, { outputMode: "repository" });
+
+    expect(harness.runNativeRepositoryGeneration).toHaveBeenCalledWith(
+      expect.objectContaining({
+        plannerModelId: "planner-model",
+        pageModelId: "page-model",
+        specialistModelId: "specialist-model",
+        specialistPathPrefixes: ["architecture/session-", "custom/"],
+      }),
+    );
   });
 });

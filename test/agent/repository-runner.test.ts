@@ -45,6 +45,7 @@ type CapturedMiddleware = {
 };
 
 type CapturedAgentOptions = {
+  model: unknown;
   tools: CompletionTool[];
   systemPrompt: unknown;
   subagents: unknown[];
@@ -63,6 +64,7 @@ type HarnessPlanInput = {
 
 const harness = vi.hoisted(() => ({
   agentOptions: [] as CapturedAgentOptions[],
+  beginActors: [] as Array<{ metadataModel: string }>,
   beginCalls: 0,
   changedPaths: ["README.md"],
   currentRun: undefined as HarnessRun | undefined,
@@ -220,8 +222,9 @@ vi.mock("deepagents", async (importOriginal) => {
 });
 
 vi.mock("../../src/generation/repository-run.js", () => ({
-  beginRepositoryRun() {
+  beginRepositoryRun(input: { actor: { metadataModel: string } }) {
     harness.beginCalls += 1;
+    harness.beginActors.push(input.actor);
     if (harness.noop) {
       return Promise.resolve({
         view: {
@@ -352,29 +355,53 @@ vi.mock("../../src/generation/repository-run.js", () => ({
 import {
   parseWorkerToolEvent,
   runNativeRepositoryGeneration,
+  selectPageWriter,
 } from "../../src/agent/repository-runner.ts";
 import type { OpenWikiRunEvent } from "../../src/agent/types.ts";
+import { DEFAULT_OPENWIKI_SPECIALIST_PATH_PREFIXES } from "../../src/config/constants.ts";
 
 /**
  * Runs the native repository worker harness and captures public events.
  *
  * @returns Complete ordered event stream emitted by the runner.
  */
-async function runHarness(): Promise<OpenWikiRunEvent[]> {
+const plannerModel = { role: "planner" } as never;
+const pageModel = { role: "page" } as never;
+const specialistModel = { role: "specialist" } as never;
+
+async function runHarness(
+  overrides: Partial<
+    Pick<
+      Parameters<typeof runNativeRepositoryGeneration>[0],
+      | "plannerModelId"
+      | "plannerModel"
+      | "pageModelId"
+      | "pageModel"
+      | "specialistModelId"
+      | "specialistModel"
+      | "specialistPathPrefixes"
+    >
+  > = {},
+): Promise<OpenWikiRunEvent[]> {
   const events: OpenWikiRunEvent[] = [];
   await runNativeRepositoryGeneration({
     root: "/repo",
     mode: "update",
-    modelId: "test-model",
-    model: {} as never,
+    plannerModelId: "test-model",
+    plannerModel,
+    pageModelId: "test-model",
+    pageModel,
+    specialistPathPrefixes: [],
     planningContext: "User and connector context",
     onEvent: (event) => events.push(event),
+    ...overrides,
   });
   return events;
 }
 
 beforeEach(() => {
   harness.agentOptions = [];
+  harness.beginActors = [];
   harness.beginCalls = 0;
   harness.changedPaths = ["README.md"];
   harness.currentRun = undefined;
@@ -404,6 +431,11 @@ describe("runNativeRepositoryGeneration", () => {
     expect(harness.filesystemTools.flat()).not.toContain("execute");
     expect(harness.filesystemTools.flat()).not.toContain("task");
     expect(harness.agentOptions).toHaveLength(3);
+    expect(harness.agentOptions.map(({ model }) => model)).toEqual([
+      plannerModel,
+      pageModel,
+      pageModel,
+    ]);
     expect(harness.agentOptions.map(({ subagents }) => subagents)).toEqual([
       [],
       [],
@@ -445,6 +477,36 @@ describe("runNativeRepositoryGeneration", () => {
     expect(String(harness.agentOptions[1]?.systemPrompt)).toContain(
       "You own exactly /openwiki/new-feature.md",
     );
+  });
+
+  test("routes matching pages to one specialist writer and records role provenance", async () => {
+    harness.planPaths = [
+      "/openwiki/architecture/session-runtime.md",
+      "openwiki/architecture/overview.md",
+    ];
+
+    await runHarness({
+      plannerModelId: "planner-model",
+      pageModelId: "page-model",
+      specialistModelId: "specialist-model",
+      specialistModel,
+      specialistPathPrefixes: ["architecture/session-"],
+    });
+
+    expect(harness.agentOptions.map(({ model }) => model)).toEqual([
+      plannerModel,
+      specialistModel,
+      pageModel,
+    ]);
+    expect(harness.beginActors[0]?.metadataModel).toBe(
+      "planner=planner-model; page=page-model; specialist=specialist-model",
+    );
+  });
+
+  test("keeps one-model metadata unchanged", async () => {
+    await runHarness();
+
+    expect(harness.beginActors[0]?.metadataModel).toBe("test-model");
   });
 
   test("returns invalid page submissions as tool errors for correction and retry", async () => {
@@ -592,6 +654,72 @@ describe("runNativeRepositoryGeneration", () => {
 
     expect(harness.agentOptions).toHaveLength(0);
     expect(events).toEqual([{ type: "repository_progress", stage: "noop" }]);
+  });
+});
+
+describe("selectPageWriter", () => {
+  test("uses default prefixes for matching and non-matching pages", () => {
+    const models = {
+      pageModelId: "page-model",
+      pageModel,
+      specialistModelId: "specialist-model",
+      specialistModel,
+      specialistPathPrefixes: DEFAULT_OPENWIKI_SPECIALIST_PATH_PREFIXES,
+    };
+
+    expect(
+      selectPageWriter(
+        "/openwiki/workflows/adding-a-sandbox-provider.md",
+        models,
+      ).role,
+    ).toBe("specialist");
+    expect(
+      selectPageWriter("/openwiki/workflows/releasing.md", models).role,
+    ).toBe("page");
+  });
+
+  test.each([
+    "/openwiki/integrations/source-control.md",
+    "openwiki/integrations/source-control/github.md",
+  ])("normalizes and matches %s", (pagePath) => {
+    expect(
+      selectPageWriter(pagePath, {
+        pageModelId: "page-model",
+        pageModel,
+        specialistModelId: "specialist-model",
+        specialistModel,
+        specialistPathPrefixes: [
+          "integrations/source-",
+          "integrations/source-control",
+        ],
+      }),
+    ).toMatchObject({
+      role: "specialist",
+      modelId: "specialist-model",
+      matchedPrefix: "integrations/source-",
+    });
+  });
+
+  test("never selects a specialist without a specialist model", () => {
+    expect(
+      selectPageWriter("/openwiki/architecture/session-runtime.md", {
+        pageModelId: "page-model",
+        pageModel,
+        specialistPathPrefixes: ["architecture/session-"],
+      }),
+    ).toMatchObject({ role: "page", modelId: "page-model", model: pageModel });
+  });
+
+  test("matches prefixes case-sensitively", () => {
+    expect(
+      selectPageWriter("/openwiki/Architecture/session-runtime.md", {
+        pageModelId: "page-model",
+        pageModel,
+        specialistModelId: "specialist-model",
+        specialistModel,
+        specialistPathPrefixes: ["architecture/session-"],
+      }).role,
+    ).toBe("page");
   });
 });
 

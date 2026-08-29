@@ -84,6 +84,7 @@ import {
   BEDROCK_AWS_SECRET_ACCESS_KEY_ENV_KEY,
   BEDROCK_AWS_SESSION_TOKEN_ENV_KEY,
   COPILOT_BASE_URL_ENV_KEY,
+  DEFAULT_OPENWIKI_SPECIALIST_PATH_PREFIXES,
   DEFAULT_ANTHROPIC_MAX_OUTPUT_TOKENS,
   getDefaultModelId,
   getMissingProviderEnvKey,
@@ -111,8 +112,12 @@ import {
   OPENWIKI_MAX_OUTPUT_TOKENS_ENV_KEY,
   OPENWIKI_MODEL_ID_ENV_KEY,
   OPENWIKI_OPENROUTER_MAX_TOKENS_ENV_KEY,
+  OPENWIKI_PAGE_MODEL_ID_ENV_KEY,
+  OPENWIKI_PLANNER_MODEL_ID_ENV_KEY,
   OPENWIKI_PROVIDER_ENV_KEY,
   OPENWIKI_PROVIDER_RETRY_ATTEMPTS_ENV_KEY,
+  OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY,
+  OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY,
   OPENWIKI_STREAM_IDLE_TIMEOUT_ENV_KEY,
   providerRequiresBaseUrl,
   providerRequiresRegion,
@@ -187,16 +192,38 @@ export async function runOpenWikiAgent(
       const config = await resolveRunConfig(options, (resolved) => {
         telemetryContext.provider = resolved;
       });
-      const model = inStageSync(
+      const repositoryModels = resolveRepositoryModelIds(
+        options,
+        config.provider,
+        config.modelId,
+      );
+      const models = inStageSync(
         "build",
-        () =>
-          createModel(
+        () => ({
+          planner: createModel(
             config.provider,
-            config.modelId,
+            repositoryModels.plannerModelId,
             config.providerRetryAttempts,
             config.maxOutputTokens,
             config.streamIdleTimeout,
           ),
+          page: createModel(
+            config.provider,
+            repositoryModels.pageModelId,
+            config.providerRetryAttempts,
+            config.maxOutputTokens,
+            config.streamIdleTimeout,
+          ),
+          specialist: repositoryModels.specialistModelId
+            ? createModel(
+                config.provider,
+                repositoryModels.specialistModelId,
+                config.providerRetryAttempts,
+                config.maxOutputTokens,
+                config.streamIdleTimeout,
+              )
+            : undefined,
+        }),
         { errorClass: "build_error", errorDetail: "model" },
       );
       const generation = await inStage(
@@ -208,8 +235,13 @@ export async function runOpenWikiAgent(
             language: options.language,
             force: Boolean(options.userMessage?.trim()),
             planningContext: options.userMessage,
-            modelId: config.modelId,
-            model,
+            plannerModelId: repositoryModels.plannerModelId,
+            plannerModel: models.planner,
+            pageModelId: repositoryModels.pageModelId,
+            pageModel: models.page,
+            specialistModelId: repositoryModels.specialistModelId,
+            specialistModel: models.specialist,
+            specialistPathPrefixes: repositoryModels.specialistPathPrefixes,
             onEvent: options.onEvent,
           }),
         { errorClass: "agent_error" },
@@ -1045,6 +1077,82 @@ export function resolveModelId(
 
   warnOnProviderModelMismatch(options, provider, modelId);
 
+  return modelId;
+}
+
+export interface RepositoryModelIds {
+  plannerModelId: string;
+  pageModelId: string;
+  specialistModelId?: string;
+  specialistPathPrefixes: string[];
+}
+
+/**
+ * Resolves the three repository-generation roles on one configured provider.
+ * Role-specific environment values fall back to the normal run model, while
+ * specialist routing remains disabled unless its model is explicitly set.
+ */
+export function resolveRepositoryModelIds(
+  options: OpenWikiRunOptions,
+  provider: OpenWikiProvider,
+  resolvedFallbackModelId?: string,
+): RepositoryModelIds {
+  const fallbackModelId =
+    resolvedFallbackModelId ?? resolveModelId(options, provider);
+  const plannerModelId = resolveRoleModelId(
+    OPENWIKI_PLANNER_MODEL_ID_ENV_KEY,
+    fallbackModelId,
+    options,
+    provider,
+  );
+  const pageModelId = resolveRoleModelId(
+    OPENWIKI_PAGE_MODEL_ID_ENV_KEY,
+    fallbackModelId,
+    options,
+    provider,
+  );
+  const specialistModelId =
+    process.env[OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY] !== undefined
+      ? resolveRoleModelId(
+          OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY,
+          fallbackModelId,
+          options,
+          provider,
+        )
+      : undefined;
+  const configuredPrefixes =
+    process.env[OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY];
+  const specialistPathPrefixes = specialistModelId
+    ? configuredPrefixes === undefined
+      ? [...DEFAULT_OPENWIKI_SPECIALIST_PATH_PREFIXES]
+      : configuredPrefixes
+          .split(",")
+          .map((prefix) => prefix.trim())
+          .filter(Boolean)
+    : [];
+
+  return {
+    plannerModelId,
+    pageModelId,
+    ...(specialistModelId ? { specialistModelId } : {}),
+    specialistPathPrefixes,
+  };
+}
+
+function resolveRoleModelId(
+  envKey: string,
+  fallbackModelId: string,
+  options: OpenWikiRunOptions,
+  provider: OpenWikiProvider,
+): string {
+  const configuredModelId = process.env[envKey];
+  const modelId = normalizeModelId(configuredModelId ?? fallbackModelId);
+  if (!isValidModelId(modelId)) {
+    throw new Error(`Invalid model ID configured in ${envKey}.`);
+  }
+  if (configuredModelId !== undefined) {
+    warnOnProviderModelMismatch(options, provider, modelId);
+  }
   return modelId;
 }
 

@@ -150,14 +150,39 @@ export interface NativeRepositoryGenerationOptions {
   planningContext?: string | null;
 
   /**
-   * Stable model identity written to repository run metadata.
+   * Initialized model used only by planning workers.
    */
-  modelId: string;
+  plannerModel: BaseChatModel;
 
   /**
-   * Initialized chat model reused by fresh planner and page workers.
+   * Planner model identity written to role-aware run metadata.
    */
-  model: BaseChatModel;
+  plannerModelId: string;
+
+  /**
+   * Initialized default model reused by fresh page workers.
+   */
+  pageModel: BaseChatModel;
+
+  /**
+   * Default page-writer model identity.
+   */
+  pageModelId: string;
+
+  /**
+   * Optional initialized model for matching specialist pages.
+   */
+  specialistModel?: BaseChatModel;
+
+  /**
+   * Optional specialist page-writer model identity.
+   */
+  specialistModelId?: string;
+
+  /**
+   * Ordered repository-relative page prefixes routed to the specialist.
+   */
+  specialistPathPrefixes: readonly string[];
 
   /**
    * Optional lifecycle and bounded worker-tool event consumer.
@@ -206,13 +231,13 @@ export async function runNativeRepositoryGeneration(
       await runPlanningAgent(
         run,
         view,
-        options.model,
+        options.plannerModel,
         run.state.planningContext,
         options.onEvent,
       );
     }
 
-    await runPendingPageAgents(run, options.model, options.onEvent, view);
+    await runPendingPageAgents(run, options, options.onEvent, view);
     options.onEvent?.({
       type: "repository_progress",
       stage: "finalizing",
@@ -256,7 +281,7 @@ async function beginNativeRepositoryRun(
     planningContext: options.planningContext ?? undefined,
     actor: {
       producerActor: OPENWIKI_PRODUCER_ACTOR,
-      metadataModel: options.modelId,
+      metadataModel: formatRepositoryModelMetadata(options),
     },
   });
 }
@@ -363,7 +388,7 @@ async function runPlanningAgent(
  */
 async function runPendingPageAgents(
   run: ActiveRepositoryRun,
-  model: BaseChatModel,
+  models: NativeRepositoryGenerationOptions,
   onEvent: ((event: OpenWikiRunEvent) => void) | undefined,
   view: ActiveBeginView,
 ): Promise<void> {
@@ -381,8 +406,72 @@ async function runPendingPageAgents(
       pageIndex,
       pageCount: pages.length,
     });
-    await runPageAgent(run, next.job, model, onEvent);
+    const writer = selectPageWriter(next.job.path, models);
+    await runPageAgent(run, next.job, writer.model, onEvent);
   }
+}
+
+export interface PageWriterSelection {
+  role: "page" | "specialist";
+  modelId: string;
+  model: BaseChatModel;
+  matchedPrefix?: string;
+}
+
+/**
+ * Selects exactly one writer for a page after removing its OpenWiki root.
+ */
+export function selectPageWriter(
+  pagePath: string,
+  models: Pick<
+    NativeRepositoryGenerationOptions,
+    | "pageModel"
+    | "pageModelId"
+    | "specialistModel"
+    | "specialistModelId"
+    | "specialistPathPrefixes"
+  >,
+): PageWriterSelection {
+  const normalizedPath = pagePath.replace(/^\/?openwiki\//u, "");
+  if (models.specialistModel && models.specialistModelId) {
+    const matchedPrefix = models.specialistPathPrefixes.find((prefix) =>
+      normalizedPath.startsWith(prefix),
+    );
+    if (matchedPrefix !== undefined) {
+      return {
+        role: "specialist",
+        modelId: models.specialistModelId,
+        model: models.specialistModel,
+        matchedPrefix,
+      };
+    }
+  }
+
+  return {
+    role: "page",
+    modelId: models.pageModelId,
+    model: models.pageModel,
+  };
+}
+
+/** Keeps one-model metadata byte-for-byte compatible and labels split roles. */
+function formatRepositoryModelMetadata(
+  models: NativeRepositoryGenerationOptions,
+): string {
+  if (
+    models.plannerModelId === models.pageModelId &&
+    !models.specialistModelId
+  ) {
+    return models.pageModelId;
+  }
+
+  return [
+    `planner=${models.plannerModelId}`,
+    `page=${models.pageModelId}`,
+    ...(models.specialistModelId
+      ? [`specialist=${models.specialistModelId}`]
+      : []),
+  ].join("; ");
 }
 
 /**

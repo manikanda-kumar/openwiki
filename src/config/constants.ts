@@ -58,6 +58,20 @@ export const GOOGLE_APPLICATION_CREDENTIALS_ENV_KEY =
 export const DEFAULT_VERTEX_LOCATION = "global";
 export const OPENWIKI_PROVIDER_ENV_KEY = "OPENWIKI_PROVIDER";
 export const OPENWIKI_MODEL_ID_ENV_KEY = "OPENWIKI_MODEL_ID";
+export const OPENWIKI_PLANNER_MODEL_ID_ENV_KEY = "OPENWIKI_PLANNER_MODEL_ID";
+export const OPENWIKI_PAGE_MODEL_ID_ENV_KEY = "OPENWIKI_PAGE_MODEL_ID";
+export const OPENWIKI_SPECIALIST_MODEL_ID_ENV_KEY =
+  "OPENWIKI_SPECIALIST_MODEL_ID";
+export const OPENWIKI_SPECIALIST_PATH_PREFIXES_ENV_KEY =
+  "OPENWIKI_SPECIALIST_PATH_PREFIXES";
+export const DEFAULT_OPENWIKI_SPECIALIST_PATH_PREFIXES = [
+  "architecture/session-",
+  "integrations/service-auth",
+  "integrations/source-control",
+  "workflows/websocket",
+  "workflows/adding-a-sandbox-provider",
+  "sandbox-runtime-protocol",
+] as const;
 export const OPENWIKI_STREAM_IDLE_TIMEOUT_ENV_KEY =
   "OPENWIKI_STREAM_IDLE_TIMEOUT";
 const MAX_STREAM_IDLE_TIMEOUT_MS = 2_147_483_647;

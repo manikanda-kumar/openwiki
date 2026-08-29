@@ -1215,7 +1215,8 @@ export const helpContent: HelpContent = {
     },
     {
       label: "--modelId <id>",
-      description: "Use a model ID for this run.",
+      description:
+        "Use the fallback model ID for this run. Repository generation can override planner, page, and specialist roles with OPENWIKI_PLANNER_MODEL_ID, OPENWIKI_PAGE_MODEL_ID, and OPENWIKI_SPECIALIST_MODEL_ID; OPENWIKI_SPECIALIST_PATH_PREFIXES selects specialist pages.",
     },
     {
       label: "--scheduled",
