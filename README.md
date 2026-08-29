@@ -218,7 +218,7 @@ For a plain map of the wiki that lives next to the Markdown it describes, genera
 openwiki map
 ```
 
-This reads `./openwiki` and writes `./openwiki/map.html`: every page grouped by section, with its type, description, tags, reading time, backlink count, and outgoing links, plus a client-side filter. Each title links to the Markdown source, so the file works as the wiki's table of contents whether it is opened from disk, served statically, or browsed on a git host. Pass a path to map a different wiki and `--output <file>` to write elsewhere:
+This reads `./openwiki` and writes `./openwiki/map.html`: every page listed under its section with its type, description, tags, reading time, backlink count, and the pages it leads to. Each title links to the Markdown source, so the file works as the wiki's table of contents whether it is opened from disk, served statically, or browsed on a git host. Filter as you type (press `/` to jump to the box, `Escape` to clear), narrow by page type, and switch between light and dark; page-type colors match the visualizer's legend. Pass a path to map a different wiki and `--output <file>` to write elsewhere:
 
 ```sh
 openwiki map openwiki --output docs/wiki-map.html

@@ -3,9 +3,15 @@
  * contents for a generated wiki. Unlike the visualizer, the output is a single file
  * with no sidecar assets and no CDN dependencies, so it can be committed next to the
  * markdown it links to and opened straight from disk or a git host.
+ *
+ * It borrows the visualizer's design language - the same LangChain palette, the same
+ * type colors from `colorsForTypes`, the same control shapes - but leads in light,
+ * because this page is read in a browser tab beside the repository rather than in the
+ * visualizer's focused dark canvas.
  */
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { colorsForTypes } from "./client-lib.js";
 import { buildGraph, type WikiGraph, type WikiNode } from "./graph.js";
 
 /** Inputs for writing the contents map. */
@@ -113,148 +119,499 @@ export function markdownHref(
   return posix.startsWith(".") ? posix : `./${posix}`;
 }
 
-/** Inline stylesheet: light by default, with a dark variant for `prefers-color-scheme`. */
+/**
+ * Inline stylesheet. The palette is the visualizer's, with light as the default
+ * surface and the dark variant applied by preference or by the header toggle.
+ */
 const STYLES = /* css */ `
 :root {
-  --bg: #f7f9fc;
-  --panel: #ffffff;
-  --edge: #dfe6f0;
-  --text: #3f5164;
-  --heading: #101828;
-  --muted: #6b7f96;
+  color-scheme: light dark;
+  --bg: #f4f9fd;
+  --panel: #fbfdff;
+  --raised: #ffffff;
+  --edge: #d8e7f5;
+  --edge-soft: #e8f1fa;
+  --text: #3d5166;
+  --heading: #0b1220;
+  --muted: #5b7086;
   --accent: #1a6fb5;
-  --accent-soft: #e8f2fb;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --accent-hover: #14568c;
+  --accent-soft: #e5f4ff;
+  --ring: rgba(26, 111, 181, 0.35);
+  --shadow: 0 1px 2px rgba(11, 18, 32, 0.06);
+}
+:root[data-theme="dark"] {
+  --bg: #030710;
+  --panel: #0b1120;
+  --raised: #101a2e;
+  --edge: #1a2740;
+  --edge-soft: #131f36;
+  --text: #c8ddf0;
+  --heading: #f2f7fd;
+  --muted: #6b8299;
+  --accent: #7fc8ff;
+  --accent-hover: #99d4ff;
+  --accent-soft: rgba(127, 200, 255, 0.12);
+  --ring: rgba(127, 200, 255, 0.45);
+  --shadow: none;
 }
 @media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0a1020;
-    --panel: #101a2e;
-    --edge: #1e2c47;
-    --text: #c3d4e6;
+  :root:not([data-theme="light"]) {
+    --bg: #030710;
+    --panel: #0b1120;
+    --raised: #101a2e;
+    --edge: #1a2740;
+    --edge-soft: #131f36;
+    --text: #c8ddf0;
     --heading: #f2f7fd;
-    --muted: #7d93ac;
+    --muted: #6b8299;
     --accent: #7fc8ff;
+    --accent-hover: #99d4ff;
     --accent-soft: rgba(127, 200, 255, 0.12);
+    --ring: rgba(127, 200, 255, 0.45);
     --shadow: none;
   }
 }
 * { box-sizing: border-box; }
+html { scroll-behavior: smooth; scroll-padding-top: 88px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
 body {
   margin: 0;
   background: var(--bg);
   color: var(--text);
-  font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+  font-family: "Lausanne", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
 }
 a { color: var(--accent); text-decoration: none; }
-a:hover { text-decoration: underline; }
-header {
-  border-bottom: 1px solid var(--edge);
-  background: var(--panel);
-  padding: 28px 32px 20px;
-}
-h1 { color: var(--heading); font-size: 22px; margin: 0 0 6px; letter-spacing: -0.01em; }
-.subtitle { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
-.stats { display: flex; flex-wrap: wrap; gap: 22px; margin-bottom: 18px; }
-.stat-value { color: var(--heading); font-size: 20px; font-weight: 600; }
-.stat-label { color: var(--muted); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
-#search {
-  width: 100%;
-  max-width: 460px;
-  padding: 9px 12px;
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+:focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; border-radius: 4px; }
+.skip {
+  position: absolute;
+  left: -9999px;
+  top: 8px;
+  padding: 8px 14px;
+  background: var(--raised);
   border: 1px solid var(--edge);
   border-radius: 8px;
-  background: var(--bg);
-  color: var(--text);
-  font: inherit;
+  z-index: 20;
 }
-#search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-.layout { display: flex; align-items: flex-start; gap: 32px; padding: 28px 32px 64px; }
-nav {
+.skip:focus { left: 16px; }
+
+/* Topbar: the visualizer's control strip, one line, sticky. */
+.topbar {
   position: sticky;
-  top: 24px;
-  flex: 0 0 208px;
-  font-size: 13px;
-}
-nav ol { list-style: none; margin: 0; padding: 0; }
-nav li { margin-bottom: 2px; }
-nav a { display: block; padding: 5px 10px; border-radius: 6px; color: var(--text); }
-nav a:hover { background: var(--accent-soft); text-decoration: none; }
-nav .count { color: var(--muted); float: right; }
-main { flex: 1 1 auto; min-width: 0; }
-section { margin-bottom: 36px; }
-h2 {
-  color: var(--heading);
-  font-size: 12px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  margin: 0 0 12px;
-  padding-bottom: 8px;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 13px 28px;
+  background: color-mix(in srgb, var(--panel) 92%, transparent);
+  backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--edge);
 }
-.cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(310px, 1fr)); }
-article {
-  background: var(--panel);
-  border: 1px solid var(--edge);
-  border-radius: 10px;
-  padding: 14px 16px;
-  box-shadow: var(--shadow);
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand .mark {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
 }
-article h3 { font-size: 15px; margin: 0 0 6px; }
-article h3 a { color: var(--heading); }
-.desc { margin: 0 0 10px; font-size: 13px; color: var(--text); }
-.meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 11px; color: var(--muted); }
-.badge {
+.brand .divider { width: 1px; height: 22px; background: var(--edge); flex: 0 0 auto; }
+.brand .name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--heading);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.brand .name small {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+}
+.spacer { flex: 1 1 auto; }
+.controls { display: flex; align-items: center; gap: 8px; }
+input.search, select.filter {
+  font: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg);
   border: 1px solid var(--edge);
-  border-radius: 999px;
-  padding: 2px 8px;
+  border-radius: 8px;
+  padding: 8px 12px;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+input.search { width: 248px; }
+select.filter { max-width: 190px; }
+input.search:hover, select.filter:hover { border-color: color-mix(in srgb, var(--accent) 45%, var(--edge)); }
+input.search:focus, select.filter:focus { border-color: var(--accent); }
+input.search::placeholder { color: var(--muted); }
+.kbd {
+  font: inherit;
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--edge);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 1px 5px;
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--edge);
+  background: var(--bg);
+  color: var(--text);
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.icon-btn:hover { border-color: var(--accent); color: var(--accent); }
+.icon-btn svg { width: 17px; height: 17px; }
+:root[data-theme="dark"] .icon-sun, :root:not([data-theme="light"]) .icon-sun { display: none; }
+:root[data-theme="dark"] .icon-moon, :root:not([data-theme="light"]) .icon-moon { display: block; }
+:root:not([data-theme="dark"]) .icon-sun { display: block; }
+:root:not([data-theme="dark"]) .icon-moon { display: none; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .icon-sun { display: none; }
+  :root:not([data-theme="light"]) .icon-moon { display: block; }
+}
+
+/* Header line: the wiki in one sentence, not a wall of stat tiles. */
+.intro {
+  padding: 22px 28px 18px;
+  border-bottom: 1px solid var(--edge);
+  background: var(--panel);
+}
+.intro h1 {
+  margin: 0 0 5px;
+  font-size: 19px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+}
+.intro h1 strong { color: var(--heading); font-weight: 700; }
+.intro p { margin: 0; font-size: 13px; color: var(--muted); max-width: 68ch; }
+.intro strong { color: var(--text); font-weight: 600; }
+
+.layout { display: flex; align-items: flex-start; gap: 40px; padding: 28px 28px 72px; }
+
+/* Section index, mirroring the visualizer's left rail. */
+nav.rail { position: sticky; top: 74px; flex: 0 0 216px; }
+.rail-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 2px 10px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.rail-head .rail-count { letter-spacing: 0; font-weight: 500; }
+nav.rail ol { list-style: none; margin: 0; padding: 0; }
+nav.rail a {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--text);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+nav.rail a:hover { background: color-mix(in srgb, var(--accent) 12%, transparent); text-decoration: none; }
+nav.rail a[aria-current="true"] {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  color: var(--heading);
+  font-weight: 600;
+}
+nav.rail .n { font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+main { flex: 1 1 auto; min-width: 0; }
+section { margin-bottom: 40px; }
+section:last-of-type { margin-bottom: 8px; }
+.section-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 4px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--edge);
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--heading);
+}
+.section-head .n { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+ul.pages { list-style: none; margin: 0; padding: 0; }
+li.page {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: 24px;
+  padding: 11px 12px 12px 14px;
+  margin: 0 -12px 0 -14px;
+  border-radius: 10px;
+  border-bottom: 1px solid var(--edge-soft);
+  transition: background 0.15s ease;
+}
+li.page:hover { background: var(--raised); box-shadow: var(--shadow); }
+li.page:last-child { border-bottom: none; }
+.page-title {
+  grid-column: 1;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--heading);
+  letter-spacing: -0.005em;
+}
+.page-title a { color: inherit; }
+.page-title a:hover { color: var(--accent); }
+.dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.page-kind {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.page-desc {
+  grid-column: 1;
+  margin: 4px 0 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--text);
+  max-width: 74ch;
+  text-wrap: pretty;
+}
+.page-meta {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 14px;
+  margin-top: 7px;
+  font-size: 11.5px;
+  color: var(--muted);
+}
+.page-meta a { color: var(--muted); }
+.page-meta a:hover { color: var(--accent); }
+.page-meta .sep { opacity: 0.5; }
+.page-meta .path {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+.tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.tag.more { color: var(--muted); background: var(--edge-soft); }
+.page-leads {
+  grid-column: 1 / -1;
+  margin: 6px 0 0;
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 78ch;
+}
+.page-leads a { color: var(--muted); }
+.page-leads a:hover { color: var(--accent); }
+.page-leads .arrow { color: var(--muted); opacity: 0.6; margin-right: 7px; }
+.tag {
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
   color: var(--accent);
   background: var(--accent-soft);
+  border-radius: 100px;
+  padding: 2px 9px;
 }
-.tag { border-radius: 999px; padding: 2px 8px; background: var(--bg); border: 1px solid var(--edge); }
-.path { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--muted); }
-.related { margin: 10px 0 0; font-size: 12px; color: var(--muted); }
-.related a { margin-right: 8px; white-space: nowrap; }
-.empty { color: var(--muted); font-size: 13px; }
+
+.status { font-size: 12px; color: var(--muted); margin: 0 0 18px; }
+.status:empty { display: none; }
+.empty { display: none; padding: 40px 4px; max-width: 52ch; }
+.empty h2 { margin: 0 0 6px; font-size: 15px; color: var(--heading); font-weight: 600; }
+.empty p { margin: 0; font-size: 13px; color: var(--muted); }
+body[data-empty="true"] .empty { display: block; }
 [hidden] { display: none !important; }
-footer { border-top: 1px solid var(--edge); color: var(--muted); font-size: 12px; padding: 16px 32px; }
-@media (max-width: 760px) {
-  .layout { display: block; padding: 20px 18px 48px; }
-  nav { position: static; margin-bottom: 24px; }
+footer {
+  border-top: 1px solid var(--edge);
+  padding: 18px 28px 26px;
+  font-size: 12px;
+  color: var(--muted);
+}
+footer code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--text);
+}
+
+@media (max-width: 900px) {
+  .topbar { flex-wrap: wrap; gap: 10px; padding: 12px 18px; }
+  .brand { flex: 1 1 100%; min-width: 0; }
+  .spacer { display: none; }
+  .controls { flex: 1 1 100%; min-width: 0; flex-wrap: nowrap; }
+  .controls .kbd { display: none; }
+  input.search { width: auto; flex: 1 1 auto; min-width: 0; }
+  select.filter { flex: 0 1 auto; min-width: 0; max-width: 40vw; }
+  .intro { padding: 20px 18px 16px; }
+  .layout { display: block; padding: 20px 18px 56px; }
+  nav.rail { position: static; margin-bottom: 26px; }
+  .rail-head { padding-left: 0; padding-right: 0; }
+  nav.rail a { padding-left: 0; padding-right: 0; }
+  nav.rail a:hover, nav.rail a[aria-current="true"] { background: none; color: var(--accent); }
+  li.page {
+    grid-template-columns: minmax(0, 1fr);
+    margin: 0;
+    padding: 13px 0;
+    border-radius: 0;
+  }
+  li.page:hover { background: none; box-shadow: none; }
+  .page-kind { grid-column: 1; grid-row: auto; order: -1; margin-bottom: 3px; }
+  .page-title { font-size: 15.5px; }
+}
+@media print {
+  .topbar, nav.rail, .icon-btn, .status { display: none; }
+  body { background: #ffffff; color: #101828; font-size: 11pt; }
+  li.page { break-inside: avoid; border-bottom: 1px solid #d8e7f5; }
+  a { color: #101828; }
+  .page-meta .path::after { content: ""; }
 }
 `;
 
-/** Inline search filter: hides cards and whole sections that do not match the query. */
+/** Inline behavior: filtering, theme, scroll-spy. No dependencies, no network. */
 const SCRIPT = /* js */ `
 (function () {
-  var input = document.getElementById("search");
-  var cards = Array.prototype.slice.call(document.querySelectorAll("article[data-haystack]"));
+  var root = document.documentElement;
+  var search = document.getElementById("search");
+  var kind = document.getElementById("kind");
+  var status = document.getElementById("status");
+  var pages = Array.prototype.slice.call(document.querySelectorAll("li.page"));
   var sections = Array.prototype.slice.call(document.querySelectorAll("section[data-section]"));
-  var navLinks = Array.prototype.slice.call(document.querySelectorAll("nav a[data-section]"));
-  var empty = document.getElementById("no-results");
-  input.addEventListener("input", function () {
-    var query = input.value.trim().toLowerCase();
-    cards.forEach(function (card) {
-      card.hidden = query !== "" && card.dataset.haystack.indexOf(query) === -1;
-    });
-    var visible = 0;
-    sections.forEach(function (section) {
-      var shown = section.querySelectorAll("article:not([hidden])").length;
-      section.hidden = shown === 0;
-      visible += shown;
-      navLinks.forEach(function (link) {
-        if (link.dataset.section === section.dataset.section) link.hidden = shown === 0;
-      });
-    });
-    empty.hidden = visible !== 0;
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.rail a"));
+  var total = pages.length;
+
+  function store(key, value) {
+    try { window.localStorage.setItem(key, value); } catch (error) { /* file:// or blocked */ }
+  }
+  function read(key) {
+    try { return window.localStorage.getItem(key); } catch (error) { return null; }
+  }
+
+  var saved = read("openwiki-map-theme");
+  if (saved === "dark" || saved === "light") root.dataset.theme = saved;
+  function prefersDark() {
+    return typeof window.matchMedia === "function"
+      ? window.matchMedia("(prefers-color-scheme: dark)").matches
+      : false;
+  }
+  document.getElementById("theme").addEventListener("click", function () {
+    var dark = root.dataset.theme ? root.dataset.theme === "dark" : prefersDark();
+    root.dataset.theme = dark ? "light" : "dark";
+    store("openwiki-map-theme", root.dataset.theme);
   });
+
+  function apply() {
+    var query = search.value.trim().toLowerCase();
+    var wanted = kind.value;
+    var shown = 0;
+    pages.forEach(function (page) {
+      var hit =
+        (query === "" || page.dataset.haystack.indexOf(query) !== -1) &&
+        (wanted === "" || page.dataset.kind === wanted);
+      page.hidden = !hit;
+      if (hit) shown += 1;
+    });
+    sections.forEach(function (section) {
+      var count = section.querySelectorAll("li.page:not([hidden])").length;
+      section.hidden = count === 0;
+      var link = document.querySelector('nav.rail a[data-section="' + section.dataset.section + '"]');
+      if (link) {
+        link.hidden = count === 0;
+        link.querySelector(".n").textContent = String(count);
+      }
+    });
+    document.body.dataset.empty = shown === 0 ? "true" : "false";
+    var filtered = query !== "" || wanted !== "";
+    status.textContent = filtered ? shown + " of " + total + " pages match" : "";
+  }
+
+  search.addEventListener("input", apply);
+  kind.addEventListener("change", apply);
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "/" && document.activeElement !== search) {
+      event.preventDefault();
+      search.focus();
+      search.select();
+    } else if (event.key === "Escape" && document.activeElement === search) {
+      search.value = "";
+      kind.value = "";
+      apply();
+    }
+  });
+
+  if ("IntersectionObserver" in window) {
+    var seen = {};
+    var spy = new IntersectionObserver(
+      function (entries) {
+        entries.forEach(function (entry) {
+          seen[entry.target.dataset.section] = entry.isIntersecting;
+        });
+        var active = null;
+        sections.forEach(function (section) {
+          if (!active && seen[section.dataset.section]) active = section.dataset.section;
+        });
+        links.forEach(function (link) {
+          if (active && link.dataset.section === active) {
+            link.setAttribute("aria-current", "true");
+          } else {
+            link.removeAttribute("aria-current");
+          }
+        });
+      },
+      { rootMargin: "-80px 0px -65% 0px" }
+    );
+    sections.forEach(function (section) { spy.observe(section); });
+  }
 })();
 `;
 
-/** Render one page card. */
-function renderCard(
+/** Sun and moon glyphs for the theme control, drawn on a 24px grid. */
+const THEME_ICONS = /* html */ `<svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2" /><path d="M12 2.6v2.2M12 19.2v2.2M2.6 12h2.2M19.2 12h2.2M5.4 5.4l1.6 1.6M17 17l1.6 1.6M18.6 5.4L17 7M7 17l-1.6 1.6" /></svg><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.2A8.2 8.2 0 0 1 9.8 4a8.4 8.4 0 1 0 10.2 10.2z" /></svg>`;
+
+/** Cap a list of chips, appending a "+N" marker when it overflows. */
+function capped<T>(items: T[], limit: number): { shown: T[]; rest: number } {
+  return {
+    shown: items.slice(0, limit),
+    rest: Math.max(0, items.length - limit),
+  };
+}
+
+/** Render one page as a row in its section's list. */
+function renderPage(
   node: WikiNode,
   href: string,
+  color: string,
   titles: Map<string, string>,
 ): string {
   const haystack = escapeHtml(
@@ -262,25 +619,37 @@ function renderCard(
       .join(" ")
       .toLowerCase(),
   );
-  const tags = node.tags
-    .map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`)
-    .join("");
   const description = node.description
-    ? `<p class="desc">${escapeHtml(node.description)}</p>`
+    ? `<p class="page-desc">${escapeHtml(node.description)}</p>`
     : "";
-  const related = node.links
-    .map((id) => {
-      const title = titles.get(id) ?? id;
-      return `<a href="#page-${escapeHtml(id)}">${escapeHtml(title)}</a>`;
-    })
-    .join("");
-  const relatedBlock = related
-    ? `<p class="related">Links to ${related}</p>`
+  const tagList = capped(node.tags, 4);
+  const tags = tagList.shown.length
+    ? `<span class="tags">${tagList.shown
+        .map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`)
+        .join(
+          "",
+        )}${tagList.rest ? `<span class="tag more">+${tagList.rest}</span>` : ""}</span>`
     : "";
-  return `<article id="page-${escapeHtml(node.id)}" data-haystack="${haystack}">
-<h3><a href="${escapeHtml(href)}">${escapeHtml(node.title)}</a></h3>
-${description}<div class="meta"><span class="badge">${escapeHtml(node.type)}</span>${tags}<span class="path">${escapeHtml(node.id)}.md</span><span>${readingMinutes(node)} min</span><span>${node.backlinks.length} backlink${node.backlinks.length === 1 ? "" : "s"}</span></div>
-${relatedBlock}</article>`;
+  const linkList = capped(node.links, 3);
+  const related = linkList.shown.length
+    ? `<p class="page-leads"><span class="arrow" aria-hidden="true">&rarr;</span>${linkList.shown
+        .map(
+          (id) =>
+            `<a href="#page-${escapeHtml(id)}">${escapeHtml(titles.get(id) ?? id)}</a>`,
+        )
+        .join(
+          '<span class="sep">, </span>',
+        )}${linkList.rest ? `<span class="sep">, +${linkList.rest} more</span>` : ""}</span>`
+    : "";
+  const backlinks = node.backlinks.length
+    ? `<span class="sep">&middot;</span><span>${node.backlinks.length} linked here</span>`
+    : "";
+
+  return `<li class="page" id="page-${escapeHtml(node.id)}" data-haystack="${haystack}" data-kind="${escapeHtml(node.type)}">
+<h3 class="page-title"><span class="dot" style="background:${escapeHtml(color)}"></span><a href="${escapeHtml(href)}">${escapeHtml(node.title)}</a></h3>
+<span class="page-kind">${escapeHtml(node.type)}</span>
+${description}<p class="page-meta"><span class="path">${escapeHtml(node.id)}.md</span>${tags}<span class="sep">&middot;</span><span>${readingMinutes(node)} min</span>${backlinks}</p>
+${related}</li>`;
 }
 
 /**
@@ -298,22 +667,43 @@ export function renderContentsMap(
 ): string {
   const sections = groupSections(graph.nodes);
   const titles = new Map(graph.nodes.map((node) => [node.id, node.title]));
+  const colors = colorsForTypes(graph.types);
   const generated = graph.generatedAt.slice(0, 10);
-  const nav = sections
+  const pageWord = graph.nodes.length === 1 ? "page" : "pages";
+  const sectionWord = sections.length === 1 ? "section" : "sections";
+
+  const rail = sections
     .map(
       (section) =>
-        `<li><a href="#section-${escapeHtml(section.id)}" data-section="${escapeHtml(section.id)}">${escapeHtml(section.title)}<span class="count">${section.pages.length}</span></a></li>`,
+        `<li><a href="#section-${escapeHtml(section.id)}" data-section="${escapeHtml(section.id)}">${escapeHtml(section.title)}<span class="n">${section.pages.length}</span></a></li>`,
     )
     .join("\n");
+
+  const kinds = graph.types
+    .map(
+      (type) =>
+        `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`,
+    )
+    .join("");
+
   const body = sections
     .map(
       (
         section,
       ) => `<section id="section-${escapeHtml(section.id)}" data-section="${escapeHtml(section.id)}">
-<h2>${escapeHtml(section.title)}</h2>
-<div class="cards">
-${section.pages.map((node) => renderCard(node, markdownHref(outputFile, wikiRoot, node), titles)).join("\n")}
-</div>
+<div class="section-head"><h2>${escapeHtml(section.title)}</h2><span class="n">${section.pages.length}</span></div>
+<ul class="pages">
+${section.pages
+  .map((node) =>
+    renderPage(
+      node,
+      markdownHref(outputFile, wikiRoot, node),
+      colors[node.type] ?? "#4FA8F0",
+      titles,
+    ),
+  )
+  .join("\n")}
+</ul>
 </section>`,
     )
     .join("\n");
@@ -324,31 +714,42 @@ ${section.pages.map((node) => renderCard(node, markdownHref(outputFile, wikiRoot
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>${escapeHtml(graph.root)} wiki map</title>
+<meta name="description" content="Table of contents for the ${escapeHtml(graph.root)} OpenWiki: ${graph.nodes.length} ${pageWord} across ${sections.length} ${sectionWord}." />
 <style>${STYLES}</style>
 </head>
 <body>
-<header>
-<h1>${escapeHtml(graph.root)} &middot; wiki map</h1>
-<p class="subtitle">Every page in this OpenWiki, grouped by area. Titles link to the markdown source.</p>
-<div class="stats">
-<div><div class="stat-value">${graph.nodes.length}</div><div class="stat-label">Pages</div></div>
-<div><div class="stat-value">${sections.length}</div><div class="stat-label">Sections</div></div>
-<div><div class="stat-value">${graph.edges.length}</div><div class="stat-label">Links</div></div>
-<div><div class="stat-value">${graph.types.length}</div><div class="stat-label">Page types</div></div>
-<div><div class="stat-value">${generated}</div><div class="stat-label">Generated</div></div>
+<a class="skip" href="#contents">Skip to the pages</a>
+<div class="topbar">
+<div class="brand"><span class="mark">OpenWiki</span><span class="divider"></span><span class="name">${escapeHtml(graph.root)}<small>Map of contents</small></span></div>
+<div class="spacer"></div>
+<div class="controls">
+<input id="search" class="search" type="search" placeholder="Filter by title, tag, or path" autocomplete="off" aria-label="Filter pages" />
+<span class="kbd" aria-hidden="true">/</span>
+<select id="kind" class="filter" aria-label="Filter by page type"><option value="">All types</option>${kinds}</select>
+<button id="theme" class="icon-btn" type="button" aria-label="Switch between light and dark">${THEME_ICONS}</button>
 </div>
-<input id="search" type="search" placeholder="Filter pages by title, tag, or description" autocomplete="off" />
-</header>
+</div>
+<div class="intro">
+<h1><strong>${graph.nodes.length} ${pageWord}</strong> across <strong>${sections.length} ${sectionWord}</strong>, joined by <strong>${graph.edges.length}</strong> links.</h1>
+<p>Every title opens the markdown source it was generated from. Built ${escapeHtml(generated)}.</p>
+</div>
 <div class="layout">
-<nav aria-label="Sections"><ol>
-${nav}
-</ol></nav>
-<main>
+<nav class="rail" aria-label="Sections">
+<div class="rail-head"><span>Sections</span><span class="rail-count">${sections.length}</span></div>
+<ol>
+${rail}
+</ol>
+</nav>
+<main id="contents">
+<p id="status" class="status" role="status"></p>
 ${body}
-<p id="no-results" class="empty" hidden>No pages match that filter.</p>
+<div class="empty">
+<h2>Nothing matches that filter</h2>
+<p>Filters look at titles, descriptions, tags, page types, and file paths. Clear the field with Escape, or reset the type filter to All types.</p>
+</div>
 </main>
 </div>
-<footer>Generated by <code>openwiki map</code> from ${escapeHtml(graph.root)} on ${escapeHtml(generated)}.</footer>
+<footer>Generated by <code>openwiki map</code> on ${escapeHtml(generated)}. Rerun it after a wiki update to refresh this page.</footer>
 <script>${SCRIPT}</script>
 </body>
 </html>
