@@ -16,14 +16,18 @@ import {
 } from "node:fs/promises";
 import path from "node:path";
 import { promisify } from "node:util";
-import { OPEN_WIKI_DIR, UPDATE_METADATA_PATH } from "../config/constants.js";
+import {
+  OPEN_WIKI_DIR,
+  PAGE_MANIFEST_PATH,
+  UPDATE_METADATA_PATH,
+} from "../config/constants.js";
 import {
   isExpectedSnapshotRaceError,
   isFileNotFoundError,
 } from "../platform/fs-errors.js";
 import {
   getPrimaryLanguageSubtag,
-  resolveLanguage,
+  requireResolvedLanguage,
 } from "../platform/language.js";
 import {
   readOpenWikiOnboardingConfig,
@@ -75,8 +79,9 @@ export async function createRunContext(
   const lastUpdate = await readLastUpdate(cwd, outputMode);
   // A validated flag wins; otherwise inherit the wiki's persisted language so an
   // update without --language keeps the existing wiki consistent instead of
-  // producing a mix of the old and new language.
-  const requestedLanguage = resolveLanguage(language).language;
+  // producing a mix of the old and new language. An unrecognized value never
+  // reaches here: every entry point rejects one before any run work starts.
+  const requestedLanguage = requireResolvedLanguage(language);
   // English is materialized as "en" rather than encoded by an absent key, so the
   // wiki's language is always explicit in metadata and every run inherits a
   // concrete value.
@@ -133,7 +138,7 @@ export async function getUpdateNoopStatus(
     return { shouldSkip: false, reason: "previous update was interrupted" };
   }
 
-  const resolvedRequestedLanguage = resolveLanguage(requestedLanguage).language;
+  const resolvedRequestedLanguage = requireResolvedLanguage(requestedLanguage);
   if (
     resolvedRequestedLanguage !== undefined &&
     getPrimaryLanguageSubtag(resolvedRequestedLanguage) !==
@@ -197,6 +202,8 @@ export function shouldCheckUpdateNoop(options: OpenWikiRunOptions): boolean {
  * Records an init/update run so future updates can diff from this git head.
  * Interrupted runs are recorded with status "interrupted" so the update
  * no-op check knows the wiki may be partial and does not skip the retry.
+ * A `null` override deliberately omits the checkpoint when no successful
+ * repository baseline exists.
  */
 export async function writeLastUpdateMetadata(
   command: OpenWikiCommand,
@@ -205,12 +212,19 @@ export async function writeLastUpdateMetadata(
   outputMode: OpenWikiOutputMode = "repository",
   status: UpdateRunStatus = "complete",
   language?: string,
+  gitHeadOverride?: string | null,
 ): Promise<void> {
   const metadataFile = getMetadataFilePath(cwd, outputMode);
+  const gitHead =
+    outputMode !== "repository"
+      ? undefined
+      : gitHeadOverride === null
+        ? undefined
+        : (gitHeadOverride ?? (await getGitHead(cwd)));
   const metadata: UpdateMetadata = {
     updatedAt: new Date().toISOString(),
     command,
-    gitHead: outputMode === "repository" ? await getGitHead(cwd) : undefined,
+    gitHead,
     model: modelId,
     status,
     ...(language ? { language } : {}),
@@ -288,19 +302,36 @@ interface SourceStatusEntry {
 }
 
 /**
- * Hashes every model-visible repository source input for one semantic plan.
+ * Exact repository source identity captured for one semantic plan.
+ */
+export interface RepositorySourceSnapshot {
+  /**
+   * Versioned hash of every model-visible source input.
+   */
+  fingerprint: string;
+
+  /**
+   * Git commit observed by the fingerprint operation.
+   *
+   * @default undefined for an unborn branch.
+   */
+  gitHead?: string;
+}
+
+/**
+ * Hashes model-visible source input and returns its observed Git commit.
  *
  * Generated OpenWiki state and ignored paths are excluded. Git, stat, symlink,
  * and file-read failures reject because the fingerprint is a correctness gate.
  *
  * @param cwd - Absolute Git repository root.
  * @param openWikiIgnore - Ignore rules loaded for this run.
- * @returns A versioned `sha256:` fingerprint.
+ * @returns Paired source fingerprint and Git HEAD.
  */
-export async function createRepositorySourceFingerprint(
+export async function createRepositorySourceSnapshot(
   cwd: string,
   openWikiIgnore: OpenWikiIgnore,
-): Promise<string> {
+): Promise<RepositorySourceSnapshot> {
   if (!path.isAbsolute(cwd)) {
     throw new Error("Repository source fingerprint requires an absolute root.");
   }
@@ -365,7 +396,26 @@ export async function createRepositorySourceFingerprint(
     );
   }
 
-  return `sha256:${hash.digest("hex")}`;
+  const fingerprint = `sha256:${hash.digest("hex")}`;
+  return {
+    fingerprint,
+    ...(head.startsWith("unborn:") ? {} : { gitHead: head }),
+  };
+}
+
+/**
+ * Hashes every model-visible repository source input for one semantic plan.
+ *
+ * @param cwd - Absolute Git repository root.
+ * @param openWikiIgnore - Ignore rules loaded for this run.
+ * @returns A versioned `sha256:` fingerprint.
+ */
+export async function createRepositorySourceFingerprint(
+  cwd: string,
+  openWikiIgnore: OpenWikiIgnore,
+): Promise<string> {
+  return (await createRepositorySourceSnapshot(cwd, openWikiIgnore))
+    .fingerprint;
 }
 
 /**
@@ -820,9 +870,10 @@ function isUpdateMetadataStatusLine(line: string): boolean {
   const statusPath = (GIT_STATUS_LINE_PATTERN.exec(line)?.[1] ?? line).trim();
   const normalizedPath = statusPath.replace(/\\/gu, "/");
 
-  return (
-    normalizedPath === UPDATE_METADATA_PATH ||
-    normalizedPath.endsWith(` -> ${UPDATE_METADATA_PATH}`)
+  return [PAGE_MANIFEST_PATH, UPDATE_METADATA_PATH].some(
+    (metadataPath) =>
+      normalizedPath === metadataPath ||
+      normalizedPath.endsWith(` -> ${metadataPath}`),
   );
 }
 

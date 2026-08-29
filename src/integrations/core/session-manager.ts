@@ -216,7 +216,7 @@ export class HostSessionManager {
       {
         name: "openwiki_begin",
         description:
-          "Start or resume OpenWiki repository generation. Returns status=noop for a clean update, otherwise the durable planning/generation run state.",
+          "Start or resume OpenWiki repository generation. Returns status=noop for a clean update, otherwise the durable planning/generation run state. An unrecognized `language` fails the call with invalid_input instead of starting a run.",
         schema: BeginInput,
         handle: async (input) => this.begin(BeginInput.parse(input)),
       },
@@ -244,7 +244,7 @@ export class HostSessionManager {
       {
         name: "openwiki_finish",
         description:
-          "Finish only after every PageJob is complete. Runs deterministic deletion, validation, indexing, provenance, Claims finalization, and complete metadata persistence.",
+          "Finish only after every PageJob is complete. Runs deterministic deletion, validation, indexing, provenance, Claims finalization, and run metadata persistence.",
         schema: RunInput,
         handle: async (input) => this.finish(RunInput.parse(input)),
       },

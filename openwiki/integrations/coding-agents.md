@@ -1,11 +1,8 @@
 ---
 type: integration guide
-title: Coding-Agent Integrations (Codex/Claude/OpenCode/Grok/Antigravity)
+title: Coding-Agent Integrations (Codex/Claude/OpenCode/Cursor/Grok/Antigravity)
 description: How OpenWiki runs inside a host coding agent through the five-operation MCP page-job protocol, how install writes host config and the shared skill bundle, and the divided ownership between host research and OpenWiki finalization.
 tags: [integrations, mcp, coding-agents, installation, page-job, host]
-verified:
-  - by: openwiki/0.3.3
-    at: 2026-08-25T02:14:25.283Z
 sources:
   - id: openwiki-source-f317ee207e1653d2033c81a4
     resource: repo://CONTRIBUTING.md
@@ -43,13 +40,17 @@ sources:
     resource: repo://src/integrations/mcp/server.ts
   - id: openwiki-source-6f06cc988142430d18f2233e
     resource: repo://src/integrations/mcp/stdio.ts
-generated: { by: "openwiki/0.3.3", at: "2026-08-25T02:14:25.283Z" }
+generated: { by: "openwiki/0.4.3", at: "2026-08-28T03:39:43.412Z" }
+verified:
+  - by: openwiki/0.4.3
+    at: 2026-08-28T03:39:43.412Z
 ---
 
-# Coding-Agent Integrations (Codex/Claude/OpenCode/Grok/Antigravity)
+# Coding-Agent Integrations (Codex/Claude/OpenCode/Cursor/Grok/Antigravity)
 
-OpenWiki can run _inside_ a host coding agent (Codex, Claude Code, OpenCode, Grok, or Antigravity)
-instead of as a standalone process. The host agent supplies the model, native
+OpenWiki can run _inside_ a host coding agent (Codex, Claude Code, OpenCode,
+Cursor, Grok, or Antigravity) instead of as a standalone process. The host agent
+supplies the model, native
 repository tools, and Markdown authoring; OpenWiki supplies a deterministic,
 resumable **page-job lifecycle** over the Model Context Protocol (MCP). The two
 sides communicate through exactly five MCP tools, and installation wires a local
@@ -193,12 +194,18 @@ registry of supported hosts. Each entry declares its display name, provenance
 actor, per-scope skill directory and MCP config, and a documentation URL:
 
 - **Codex** — `.codex/config.toml` (`codex-toml`), skill under
-  `.agents/skills/openwiki`, at both user and project scope.
+  `.agents/skills/openwiki`, at both user and project scope; `producerActor`
+  `codex`.
 - **Claude Code** — user config `.claude.json` and project config `.mcp.json`
-  (both `json`), skill under `.claude/skills/openwiki`.
+  (both `json`), skill under `.claude/skills/openwiki`;
+  `producerActor` `claude-code`.
 - **OpenCode** — user config `.config/opencode/opencode.jsonc` and project config
   `opencode.jsonc` (both `opencode-json`), with distinct user/project skill
-  directories (`.config/opencode/...` vs `.opencode/...`).
+  directories (`.config/opencode/skills/openwiki` vs `.opencode/skills/openwiki`);
+  `producerActor` `opencode`.
+- **Cursor** — `.cursor/mcp.json` (`json`), skill under
+  `.cursor/skills/openwiki`, at both user and project scope;
+  `producerActor` `cursor`.
 - **Grok** — `.grok/config.toml` (`codex-toml`; Grok reads the same
   `[mcp_servers.<name>]` table shape as Codex), skill under
   `.grok/skills/openwiki`, at both user and project scope.
@@ -259,8 +266,8 @@ requested scope does not exist for the host.
 ## User-level vs project scope
 
 Scope support is per host and either side may be `null` in the registry:
-Codex, Claude Code, OpenCode, and Grok support both, while Antigravity is
-user-only. `resolveInstallContext` rejects an unsupported scope with an
+Codex, Claude Code, OpenCode, Cursor, and Grok support both, while Antigravity
+is user-only. `resolveInstallContext` rejects an unsupported scope with an
 `invalid_input` error naming the scope the host does support, and `status`
 reports `unsupported` rather than a missing installation. For
 **project** scope the installer resolves the root through the same
@@ -278,7 +285,11 @@ config adapter when possible (add a focused one only for a genuinely different
 format), and add focused registry/install/status/uninstall/config-conflict tests.
 The full procedure, including the local dogfooding command
 `pnpm integrations:dev <host>`, lives in `CONTRIBUTING.md` §"Adding a
-coding-agent integration".
+coding-agent integration". `pnpm integrations:dev` builds OpenWiki, refreshes
+the host skill, and records absolute paths to the current Node executable and
+`dist/cli/cli.js`; the four current hosts all install at user scope, and later
+source changes only require `pnpm build` unless the bundled skill itself
+changes.
 
 ## Focused tests
 

@@ -62,6 +62,21 @@ export const HOST_TARGETS = {
     },
     documentationUrl: "https://opencode.ai/docs/mcp-servers/",
   },
+
+  cursor: {
+    id: "cursor",
+    displayName: "Cursor",
+    producerActor: "cursor",
+    user: {
+      skillDirectory: ".cursor/skills/openwiki",
+      mcpConfig: { kind: "json", relativePath: ".cursor/mcp.json" },
+    },
+    project: {
+      skillDirectory: ".cursor/skills/openwiki",
+      mcpConfig: { kind: "json", relativePath: ".cursor/mcp.json" },
+    },
+    documentationUrl: "https://cursor.com/docs/mcp",
+  },
   grok: {
     id: "grok",
     displayName: "Grok",

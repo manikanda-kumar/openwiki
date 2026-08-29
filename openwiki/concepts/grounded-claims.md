@@ -3,9 +3,6 @@ type: concept
 title: Grounded Claims
 description: How OpenWiki grounds generated wiki pages in versioned repository evidence through the Claims model, including the store, session, and runtime split, evidence resolution and staleness detection, and the durability boundary reached at page completion.
 tags: [claims, evidence, grounding, provenance, verification, repository, okf]
-verified:
-  - by: openwiki/0.3.3
-    at: 2026-08-25T02:14:25.283Z
 sources:
   - id: openwiki-source-4abcc99d4dad36b191736bb7
     resource: repo://src/claims/brains/code/paths.ts
@@ -29,11 +26,18 @@ sources:
     resource: repo://src/claims/evidence/repository/resolver.ts
   - id: openwiki-source-cd8d06edadee75de8637208c
     resource: repo://src/claims/evidence/repository/resource.ts
+  - id: openwiki-source-1197594de038075f3570340c
+    resource: repo://src/generation/page-jobs.ts
+  - id: openwiki-source-7c5ecb56558cc061dab24f9d
+    resource: repo://src/generation/repository-run.ts
   - id: openwiki-source-9bac7069736f3ea19ed36748
     resource: repo://src/okf/claim-sources.ts
   - id: openwiki-source-95484b6dcd037757691dcbb2
     resource: repo://src/okf/claims-verification.ts
-generated: { by: "openwiki/0.3.3", at: "2026-08-25T02:14:25.283Z" }
+generated: { by: "openwiki/0.4.3", at: "2026-08-28T03:39:43.412Z" }
+verified:
+  - by: openwiki/0.4.3
+    at: 2026-08-28T03:39:43.412Z
 ---
 
 # Grounded Claims
@@ -69,6 +73,7 @@ working state, and lifecycle orchestration into three cooperating layers.
 stateDiagram-v2
     [*] --> Persisted
     Persisted --> Loaded: preflight loadPages
+    Persisted --> Excluded: finalize skipped page
     Loaded --> Stale: evidence version changed
     Loaded --> Unresolved: evidence missing
     Loaded --> Clean: evidence current
@@ -79,13 +84,15 @@ stateDiagram-v2
     Loaded --> Dirty: add mutation
     Dirty --> Verified: finalize recheck and write
     Dirty --> Retained: not dirty or blocked by debt
+    Excluded --> [*]
     Verified --> [*]
     Reconciled --> Retracted: retract or page deleted
     Retracted --> [*]
 ```
 
 Claim lifecycle and state transitions from persisted sidecar through preflight
-classification, reconciliation, and durable finalization.
+classification, reconciliation, and durable finalization. An `Excluded` page is
+one passed in `finalize`'s `excludedPages` set and is left untouched.
 
 ## Where Claim state persists
 
@@ -173,8 +180,11 @@ creating a write obligation.
 ## The durability boundary at page completion
 
 `ClaimSession.finalize` is the boundary where run-scoped Claim state becomes
-durable. It only touches pages that actually changed, and each such page must
-pass two gates before its sidecar is written:
+durable. It accepts an `excludedPages` set — pages whose generation jobs were
+skipped during an interrupted run — and leaves those pages untouched: it neither
+persists, rechecks, nor deletes their sidecars. For every other page, finalization
+only touches pages that actually changed, and each such page must pass two gates
+before its sidecar is written:
 
 1. **No evidence debt** — a page with unresolved grounding issues is refused, so
    stale or unresolved Claims cannot be silently persisted as verified.
@@ -182,12 +192,57 @@ pass two gates before its sidecar is written:
    time; if any resource disappeared or changed version since the mutation was
    accepted, the page is not persisted.
 
+The runtime exposes this through `ClaimsRuntime.finalize(at, excludedPages)`,
+which builds the OpenWiki producer verification event and forwards the skipped
+set.
+
+### Per-page proof at `submit_page`
+
+Each page job is grounded individually before its job is marked complete. On
+`submit_page`, after the page's Markdown is written and its front matter
+deterministically repaired, the run executes a fixed sequence:
+`replacePageClaims` translates the model's complete proposed Claim set into
+`confirm` / `update` / `add` / `retract` operations against the page's existing
+Claims, then `claimsRuntime.finalize` persists the dirty page, and finally
+`assertPageClaimsDurable` re-opens the freshly written sidecar and proves the
+page is durable before advancing the queue.
+
+`assertPageClaimsDurable` is the strict per-page proof. It re-reads the sidecar
+from disk and refuses the page when any of the following fail, so a partially or
+incorrectly persisted page cannot silently advance:
+
+- the sidecar was actually persisted and reloads;
+- its persisted `pageVersion` hash equals the current Markdown bytes
+  (`store.hashPage`);
+- it carries a durable `verification` event;
+- that verification event is durably projected into the page's front-matter
+  `verified` field (matching `by` and `at`);
+- the persisted Claim set has the same count as the session's expected set, and
+  every expected Claim is present with a matching `statement` and an equal
+  evidence resource set.
+
+The whole-run proof waits until every page job is complete (see below); the
+per-page proof lets `submit_page` fail fast and request a retry before the queue
+moves on.
+
+### Finishing a run: skipped pages and the whole-run proof
+
+When a repository run finishes, `finishRepositoryRun` first validates that every
+skipped page job carries its original `captureRepositoryPageSnapshot` capture,
+refusing to finish if any skipped job is missing its snapshot or its path no
+longer matches the job. It then derives `skippedPages` from the skipped jobs and
+passes the set both to `finalize` and to the post-run durability assertion
+(`assertRepositoryClaimsDurable`), so skipped pages are exempt from Claims
+persistence and from the "no orphan sidecar" / "every claimed page is durable"
+checks that gate the run.
+
 Finalization also removes orphaned sidecars (whose pages no longer exist),
-deletes sidecars for pages whose Markdown vanished, and removes sidecars for
-pages recorded as deleted. Each page's Markdown is hashed before its sidecar is
-written so the persisted `pageVersion` describes the exact bytes on disk. A page
-finalized with a non-empty Claim set receives a durable `verification` event; a
-page whose Claims were fully retracted is persisted without one.
+deletes sidecars for pages whose Markdown vanished during the run, and removes
+sidecars for pages recorded as deleted. Each page's Markdown is hashed before
+its sidecar is written so the persisted `pageVersion` describes the exact bytes on
+disk. A page finalized with a non-empty Claim set receives a durable
+`verification` event; a page whose Claims were fully retracted is persisted
+without one.
 
 Finalization is best-effort per page: recoverable per-page failures are isolated
 as warnings rather than aborting the run, but the runtime treats any warning as a
@@ -204,10 +259,15 @@ derived from the resource, and independently authored producer `sources` are
 retained.
 
 Durable verification is projected into the OKF `verified` field
-(`synchronizeClaimsVerification`): only events in the `openwiki/<version>` actor
-family are OpenWiki-owned, so human and other producer events survive. Only a
-page that is persisted, clean, non-empty, free of evidence debt, and carrying a
-verification event is eligible for a machine stamp.
+(`synchronizeClaimsVerification`). For every grounded page it keeps all
+producer-authored events whose `by` actor is not in the `openwiki/<version>`
+family, then appends at most one active durable verification event from Claims
+state (or none, when the page is ineligible). Bare verifier mappings are
+normalized to the canonical list form when the field is touched, and the
+projector records the pre-projection Markdown for each changed page so a failed
+hash refresh can roll the field back. Only a page that is persisted, clean,
+non-empty, free of evidence debt, and carrying a verification event is eligible
+for a machine stamp.
 
 The projection can rewrite code-owned front matter, which changes the Markdown
 bytes and therefore the page hash. To keep sidecars consistent with the final

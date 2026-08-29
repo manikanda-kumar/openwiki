@@ -449,6 +449,17 @@ describe("host integration registry", () => {
           },
         },
       },
+      cursor: {
+        producerActor: "cursor",
+        user: {
+          skillDirectory: ".cursor/skills/openwiki",
+          mcpConfig: { kind: "json", relativePath: ".cursor/mcp.json" },
+        },
+        project: {
+          skillDirectory: ".cursor/skills/openwiki",
+          mcpConfig: { kind: "json", relativePath: ".cursor/mcp.json" },
+        },
+      },
       grok: {
         producerActor: "grok",
         user: {
@@ -484,6 +495,7 @@ describe("host integration registry", () => {
       "codex",
       "claude",
       "opencode",
+      "cursor",
       "grok",
       "antigravity",
     ]);

@@ -87,6 +87,7 @@ describe("host integration CLI dogfood", () => {
       "codex\tinstalled\tCodex\n" +
         "claude\tnot-installed\tClaude Code\n" +
         "opencode\tnot-installed\tOpenCode\n" +
+        "cursor\tnot-installed\tCursor\n" +
         "grok\tnot-installed\tGrok\n" +
         "antigravity\tunsupported\tAntigravity\n",
     );

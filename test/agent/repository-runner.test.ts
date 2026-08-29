@@ -9,7 +9,7 @@ type HarnessPage = {
   seedPaths: string[];
   relatedPages: string[];
   instructions: string[];
-  status: "pending" | "complete";
+  status: "pending" | "skipped" | "complete";
 };
 
 type HarnessPlan = {
@@ -76,10 +76,14 @@ const harness = vi.hoisted(() => ({
   noop: false,
   pageSubmissionCalls: 0,
   pageToolResults: [] as unknown[],
+  pageWorkerFailures: 0,
+  pageWorkerPostSubmitFailures: 0,
   planSubmissionCalls: 0,
   planToolResults: [] as unknown[],
   planPaths: ["/openwiki/quickstart.md", "/openwiki/architecture.md"],
   resumed: false,
+  restoreCalls: 0,
+  workerExitsWithoutSubmit: false,
 }));
 
 vi.mock("deepagents", async (importOriginal) => {
@@ -194,6 +198,11 @@ vi.mock("deepagents", async (importOriginal) => {
               harness.planToolResults.push(rejection);
             }
 
+            if (toolName === "submit_page" && harness.pageWorkerFailures > 0) {
+              harness.pageWorkerFailures -= 1;
+              throw new Error("injected page worker failure");
+            }
+
             const input =
               toolName === "submit_plan"
                 ? {
@@ -212,7 +221,20 @@ vi.mock("deepagents", async (importOriginal) => {
                       },
                     ],
                   };
-            await completionTool.invoke(input);
+            const exitWithoutSubmit =
+              toolName === "submit_page" && harness.workerExitsWithoutSubmit;
+            if (exitWithoutSubmit) {
+              harness.workerExitsWithoutSubmit = false;
+            } else {
+              await completionTool.invoke(input);
+              if (
+                toolName === "submit_page" &&
+                harness.pageWorkerPostSubmitFailures > 0
+              ) {
+                harness.pageWorkerPostSubmitFailures -= 1;
+                throw new Error("injected post-submit worker failure");
+              }
+            }
           },
         }),
       );
@@ -222,6 +244,21 @@ vi.mock("deepagents", async (importOriginal) => {
 });
 
 vi.mock("../../src/generation/repository-run.js", () => ({
+  captureRepositoryPageSnapshot(_run: HarnessRun, jobId: string) {
+    return Promise.resolve({
+      jobId,
+      path: "/openwiki/snapshot.md",
+      markdown: "original\n",
+      claims: null,
+    });
+  },
+  skipRepositoryPage(run: HarnessRun, snapshot: { jobId: string }) {
+    harness.restoreCalls += 1;
+    const job = run.state.plan?.pages.find(({ id }) => id === snapshot.jobId);
+    if (!job) throw new Error("Expected skipped harness page job.");
+    job.status = "skipped";
+    return Promise.resolve();
+  },
   beginRepositoryRun(input: { actor: { metadataModel: string } }) {
     harness.beginCalls += 1;
     harness.beginActors.push(input.actor);
@@ -262,6 +299,13 @@ vi.mock("../../src/generation/repository-run.js", () => ({
         resumed: harness.resumed || harness.beginCalls > 1,
         lastUpdate: null,
         changedPaths: [...harness.changedPaths],
+        pageUpdateWindows: [
+          {
+            pages: [],
+            changedPaths: [...harness.changedPaths],
+            fullReview: true,
+          },
+        ],
         claimIssues: [],
         completedPages:
           run.state.plan?.pages.filter(({ status }) => status === "complete")
@@ -336,17 +380,10 @@ vi.mock("../../src/generation/repository-run.js", () => ({
       remaining: 0,
     });
   },
-  async finishRepositoryRun(run: HarnessRun) {
+  finishRepositoryRun() {
     harness.finishCalls += 1;
     if (harness.driftOnce && harness.finishCalls === 1) {
-      run.state.phase = "planning";
-      delete run.state.plan;
-      const { RepositoryRunError } =
-        await import("../../src/generation/errors.js");
-      throw new RepositoryRunError(
-        "conflict",
-        "Repository source changed during this OpenWiki run. The old plan was invalidated; call begin and submit a replacement plan.",
-      );
+      return { status: "complete", sourceChanged: true };
     }
     return { status: "complete" };
   },
@@ -413,10 +450,14 @@ beforeEach(() => {
   harness.noop = false;
   harness.pageSubmissionCalls = 0;
   harness.pageToolResults = [];
+  harness.pageWorkerFailures = 0;
+  harness.pageWorkerPostSubmitFailures = 0;
   harness.planSubmissionCalls = 0;
   harness.planToolResults = [];
   harness.planPaths = ["/openwiki/quickstart.md", "/openwiki/architecture.md"];
   harness.resumed = false;
+  harness.restoreCalls = 0;
+  harness.workerExitsWithoutSubmit = false;
 });
 
 describe("runNativeRepositoryGeneration", () => {
@@ -557,6 +598,29 @@ describe("runNativeRepositoryGeneration", () => {
     expect(harness.finishCalls).toBe(1);
   });
 
+  test("skips a failed page worker and continues the queue", async () => {
+    harness.pageWorkerFailures = 1;
+    harness.planPaths = ["/openwiki/failed.md", "/openwiki/later.md"];
+
+    await expect(runHarness()).resolves.toBeDefined();
+
+    expect(harness.restoreCalls).toBe(1);
+    expect(harness.currentRun?.state.plan?.pages[0]?.status).toBe("skipped");
+    expect(harness.currentRun?.state.plan?.pages[1]?.status).toBe("complete");
+    expect(harness.finishCalls).toBe(1);
+  });
+
+  test("keeps a durably completed page after a later worker failure", async () => {
+    harness.pageWorkerPostSubmitFailures = 1;
+    harness.planPaths = ["/openwiki/completed.md"];
+
+    await expect(runHarness()).resolves.toBeDefined();
+
+    expect(harness.restoreCalls).toBe(0);
+    expect(harness.currentRun?.state.plan?.pages[0]?.status).toBe("complete");
+    expect(harness.finishCalls).toBe(1);
+  });
+
   test("filters DeepAgents' automatic task capability at the model boundary", async () => {
     await runHarness();
     const noDelegation = harness.agentOptions[0]?.middleware.at(-1);
@@ -617,22 +681,15 @@ describe("runNativeRepositoryGeneration", () => {
     );
   });
 
-  test("re-begins and replans after finish-time source drift", async () => {
+  test("finalizes once and warns after finish-time source drift", async () => {
     harness.driftOnce = true;
     harness.planPaths = ["/openwiki/quickstart.md"];
 
     const events = await runHarness();
 
-    expect(harness.beginCalls).toBe(2);
-    expect(harness.finishCalls).toBe(2);
-    expect(harness.agentOptions).toHaveLength(4);
-    expect(events).toContainEqual(
-      expect.objectContaining({
-        type: "repository_progress",
-        stage: "replanning",
-        resumed: true,
-      }),
-    );
+    expect(harness.beginCalls).toBe(1);
+    expect(harness.finishCalls).toBe(1);
+    expect(harness.agentOptions).toHaveLength(2);
     expect(
       events.filter(
         (event) =>
@@ -640,11 +697,32 @@ describe("runNativeRepositoryGeneration", () => {
       ),
     ).toHaveLength(1);
     expect(
-      events.filter(
+      events.some(
         (event) =>
-          event.type === "repository_progress" && event.stage === "replanning",
+          event.type === "text" &&
+          event.text.includes("finalized without advancing"),
       ),
-    ).toHaveLength(2);
+    ).toBe(true);
+  });
+
+  test("restores and leaves a page pending when its worker does not submit", async () => {
+    harness.workerExitsWithoutSubmit = true;
+    harness.planPaths = ["/openwiki/testing.md", "/openwiki/later.md"];
+
+    const events = await runHarness();
+
+    expect(harness.restoreCalls).toBe(1);
+    expect(harness.finishCalls).toBe(1);
+    expect(harness.currentRun?.state.plan?.pages[0]?.status).toBe("skipped");
+    expect(harness.currentRun?.state.plan?.pages[1]?.status).toBe("complete");
+    expect(harness.agentOptions).toHaveLength(3);
+    expect(
+      events.some(
+        (event) =>
+          event.type === "text" &&
+          event.text.includes("reconsidered on the next update"),
+      ),
+    ).toBe(true);
   });
 
   test("reports strict no-op without constructing a worker", async () => {

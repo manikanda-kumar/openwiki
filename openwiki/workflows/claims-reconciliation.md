@@ -13,9 +13,6 @@ tags:
     provenance,
     repository,
   ]
-verified:
-  - by: openwiki/0.3.3
-    at: 2026-08-25T02:14:25.283Z
 sources:
   - id: openwiki-source-69abc6f0f641147820a274bc
     resource: repo://src/agent/utils.ts
@@ -37,7 +34,10 @@ sources:
     resource: repo://src/generation/repository-run.ts
   - id: openwiki-source-cfc15a67b4c02c45974332dc
     resource: repo://test/generation/page-jobs.test.ts
-generated: { by: "openwiki/0.3.3", at: "2026-08-25T02:14:25.283Z" }
+generated: { by: "openwiki/0.4.3", at: "2026-08-28T03:39:43.412Z" }
+verified:
+  - by: openwiki/0.4.3
+    at: 2026-08-28T03:39:43.412Z
 ---
 
 # Claims Reconciliation on Update
@@ -117,25 +117,48 @@ source outside `openwiki/` and outside the `openWikiIgnore` boundary. Changes
 that only touch generated wiki state or ignored paths do not count as
 meaningful.
 
-The repository run wires these two signals together, and **Claims validation
-precedes update no-op detection**: a run is skipped only when the Git-based
-preflight says `shouldSkip` **and** the Claims runtime reports
-`issueCount === 0`. A clean Git status therefore cannot hide stale or unresolved
-grounding state — if preflight found any stale or unresolved Claim, the run
-proceeds even on an otherwise unchanged tree. When both conditions hold, the run
-finalizes Claims (refreshing sidecars) and rewrites the last-update metadata
-before returning a `noop` result.
+The repository run wires these signals together, and **Claims validation
+precedes update no-op detection**. Before the no-op is even considered, the run
+seeds the page manifest from the last successful git baseline and fast-forwards
+coverage for unchanged pages, then computes `hasCompleteBaselineCoverage` —
+true only when every initial page already has a manifest entry. A run is skipped
+only when all three hold: the Git-based preflight says `shouldSkip`, the Claims
+runtime reports `issueCount === 0`, **and** baseline coverage is complete. A
+`force` request bypasses the whole gate and always proceeds to planning.
+
+A clean Git status therefore cannot hide stale or unresolved grounding state —
+if preflight found any stale or unresolved Claim, the run proceeds even on an
+otherwise unchanged tree. The same is true of incomplete baseline coverage: a
+legacy page lacking a manifest entry is routed to full review rather than
+promoted by the no-op.
+
+When all three conditions hold, the no-op path still proves its own stability
+before returning. It snapshots the current source, finalizes Claims (refreshing
+sidecars), and snapshots the source again; only if the fingerprint is unchanged
+does it replace the page manifest with the stable checkpoint and snapshot once
+more. Only if that published fingerprint still matches does it rewrite the
+last-update metadata and return a `noop` result. Any concurrent source drift
+falls out of the no-op and the run proceeds to planning instead.
 
 ```mermaid
 flowchart TD
-  A["update run"] --> B{"getUpdateNoopStatus shouldSkip?"}
+  A["update run, force !== true"] --> B{"getUpdateNoopStatus shouldSkip?"}
   B -->|"no"| P["proceed with planning and page work"]
   B -->|"yes"| C{"claimsRuntime issueCount == 0?"}
   C -->|"no, stale or unresolved"| P
-  C -->|"yes"| D["finalize Claims and write metadata, return noop"]
+  C -->|"yes"| E{"hasCompleteBaselineCoverage?"}
+  E -->|"no"| P
+  E -->|"yes"| F["snapshot source, finalize Claims"]
+  F --> G{"source fingerprint stable?"}
+  G -->|"no"| P
+  G -->|"yes"| H["replace page manifest, re-snapshot"]
+  H --> I{"published fingerprint stable?"}
+  I -->|"no"| P
+  I -->|"yes"| D["write last-update metadata, return noop"]
 ```
 
-Stale or unresolved Claims override an otherwise skippable update.
+Stale or unresolved Claims, and incomplete baseline coverage, override an
+otherwise skippable update.
 
 ## Turning issues into required page jobs
 
@@ -232,15 +255,58 @@ Lifecycle of a page Claim across one reconciliation pass.
 
 ## Durability at page completion
 
-After reconciliation, the run finalizes Claims for the page before recording job
-completion, and asserts the page's Claims are durable before advancing the queue.
-Finalization persists only pages whose Claim state actually changed (`dirty`),
-refuses to persist a page that still carries unresolved evidence debt, and
-rechecks every dirty page's evidence against current source and re-hashes its
-Markdown before writing the sidecar. Orphan and deleted-page sidecars are removed
-in the same pass. This is the point at which refreshed evidence versions become
-durable, so a subsequent update's preflight sees current tokens and can correctly
-report the page as no longer stale.
+Durability is enforced at two points. When a page worker submits its finished
+page, the run calls `finalize` with the run's `startedAt` timestamp and then
+`assertPageClaimsDurable` for that page before recording the job complete and
+advancing the queue. When the whole queue is finished, `finishRepositoryRun`
+calls `finalize` and `assertRepositoryClaimsDurable` once more for the
+whole-run proof.
+
+`finishRepositoryRun` guards the finish path with a **skipped-snapshot
+validation**: before any work, it requires exactly one page snapshot for every
+skipped page job, matched by job id and path, and throws an `invalid_state`
+error if a skipped job lacks its original snapshot. The skipped page paths form
+the `skippedPages` set that flows into both `finalize` and
+`assertRepositoryClaimsDurable`.
+
+### Snapshot restore precedes claims finalization
+
+The finish path runs its steps in a deliberate order:
+
+1. Apply abandoned-page deletions, planned deletions, and deleted-claim-page
+   reconciliation.
+2. `finalizeWikiArtifacts` — the deterministic index/concept wiring using the
+   session's current evidence map.
+3. **Restore each skipped page's Markdown** from its snapshot — reverting
+   skipped pages to their pre-run content.
+4. `finalize` and `assertRepositoryClaimsDurable` with `skippedPages` — the
+   Claims persistence and whole-run durability proof run **after** the snapshot
+   restore, so skipped pages are excluded from persistence but their restored
+   Markdown is already in place when the durability proof reads the working
+   tree.
+
+This ordering matters because `assertRepositoryClaimsDurable` discovers current
+pages from the working tree: by restoring skipped-page Markdown first, the
+durability proof does not mistake a skipped page's absent Markdown for a
+missing page and fail the run.
+
+`finalize` accepts an `excludedPages` set (empty by default) and skips every
+page it names across all of its work, so callers can exclude pages whose
+Markdown was not regenerated. The per-page submit path omits it. The finish
+path passes the set of skipped page paths as `excludedPages`, and passes the
+same set to `assertRepositoryClaimsDurable`, so skipped pages are excluded from
+both final Claims persistence and the whole-run durability proof.
+
+Within a non-excluded page, finalization persists only pages whose Claim state
+actually changed (`dirty`), refuses to persist a page that still carries
+unresolved evidence debt, and rechecks every dirty page's evidence against
+current source and re-hashes its Markdown before writing the sidecar. Orphan
+and deleted-page sidecars are removed in the same pass. This is the point at
+which refreshed evidence versions become durable, so a subsequent update's
+preflight sees current tokens and can correctly report the page as no longer
+stale. A run that finishes with skipped pages (or any detected source drift)
+records itself as `interrupted` rather than `complete`, so the next update
+resumes rather than no-ops.
 
 ## Related pages
 
